@@ -1,3 +1,9 @@
+- title: "Trajectory Matching: Discrete Flow Matching with Structured Actions"
+  authors: "Niklas Kemper, Marten Lienen, David Lüdke, Stephan Günnemann"
+  venue: "Preprint"
+  year: 2026
+  paper: "/assets/papers/trajectory-matching-preprint.pdf"
+
 - title: "What Expressivity Theory Misses: Message Passing Complexity for GNNs"
   authors: "Niklas Kemper, Tom Wollschläger, Stephan Günnemann"
   venue: "NeurIPS 2025"
@@ -14,4 +20,3 @@
   year: 2024
   paper: "https://arxiv.org/abs/2406.08210"
   project: "https://www.cs.cit.tum.de/daml/fragment-biased-gnns/"
-
