@@ -1,0 +1,17 @@
+- title: "What Expressivity Theory Misses: Message Passing Complexity for GNNs"
+  authors: "Niklas Kemper, Tom Wollschläger, Stephan Günnemann"
+  venue: "NeurIPS 2025"
+  distinction: "Spotlight"
+  year: 2025
+  paper: "https://arxiv.org/abs/2509.01254"
+  project: "https://www.cs.cit.tum.de/en/daml/message-passing-complexity/"
+
+- title: "Expressivity and Generalization: Fragment-Biases for Molecular GNNs"
+  authors: "Tom Wollschläger*, Niklas Kemper*, Leon Hetzel, Johanna Sommer, Stephan Günnemann"
+  venue: "ICML 2024"
+  distinction: "Oral presentation"
+  note: "* Equal contribution"
+  year: 2024
+  paper: "https://arxiv.org/abs/2406.08210"
+  project: "https://www.cs.cit.tum.de/daml/fragment-biased-gnns/"
+

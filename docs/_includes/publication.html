@@ -1,0 +1,18 @@
+{% assign publication = include.publication %}
+<li class="publication">
+  <div class="publication-year" aria-hidden="true">{{ publication.year }}</div>
+  <div>
+    <h3>{{ publication.title }}</h3>
+    <p class="publication-authors">{{ publication.authors }}</p>
+    <p class="publication-venue">
+      {{ publication.venue }}{% if publication.distinction %}<span class="badge">{{ publication.distinction }}</span>{% endif %}
+    </p>
+    {% if publication.note %}<p class="publication-note">{{ publication.note }}</p>{% endif %}
+    <div class="publication-links">
+      <a href="{{ publication.paper }}">Paper</a>
+      {% if publication.project %}<a href="{{ publication.project }}">Project page</a>{% endif %}
+      {% if publication.code %}<a href="{{ publication.code }}">Code</a>{% endif %}
+    </div>
+  </div>
+</li>
+

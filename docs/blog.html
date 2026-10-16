@@ -1,0 +1,29 @@
+---
+layout: default
+title: Blog
+permalink: /blog/
+description: Notes on machine learning and research by Niklas Kemper.
+---
+<header class="page-header">
+  <p class="eyebrow">Notes</p>
+  <h1>Blog</h1>
+  <p class="lede">Occasional writing about machine learning, research, and ideas worth working through.</p>
+</header>
+
+{% if site.posts.size > 0 %}
+  <ol class="blog-index">
+    {% for post in site.posts %}
+      <li>
+        <time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: "%B %-d, %Y" }}</time>
+        <h2><a href="{{ post.url | relative_url }}">{{ post.title }}</a></h2>
+        {% if post.description %}<p>{{ post.description }}</p>{% endif %}
+      </li>
+    {% endfor %}
+  </ol>
+{% else %}
+  <div class="empty-panel">
+    <p>No posts yet.</p>
+    <p>This section is ready for future notes and longer-form writing.</p>
+  </div>
+{% endif %}
+
