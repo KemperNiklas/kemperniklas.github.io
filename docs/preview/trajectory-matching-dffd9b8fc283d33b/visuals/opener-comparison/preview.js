@@ -132,11 +132,17 @@
     return condensed;
   }
   const groups={FragGrow:groupFrames(samples.FragGrow.frames),BondEdit:groupFrames(samples.BondEdit.frames)};
+  function repairBondPaths(drawing,index){
+    const corrections=window.bondPairFrames[index].pathCorrections||{};
+    return drawing.replace(/\bd=(['"])(.*?)\1/g,(attribute,quote,path)=>
+      Object.hasOwn(corrections,path)?`d=${quote}${corrections[path]}${quote}`:attribute);
+  }
   function recorded(name,index){
     const sample=samples[name],group=groups[name][index];
     const first=group.indices[0],end=group.indices[group.indices.length-1],frame=sample.frames[end];
     const pairs=name==='BondEdit'?window.bondPairFrames[end]:null;
-    let halo=group.indices.map(i=>sample.frames[i].halo).join('');
+    let halo=group.indices.map(i=>name==='BondEdit'?repairBondPaths(sample.frames[i].halo,i):sample.frames[i].halo).join('');
+    const ink=pairs?repairBondPaths(frame.ink,end):frame.ink;
     if(pairs&&first>0&&group.actionCount){
       const current=new Set(pairs.edges.map(edgeKey));
       window.bondPairFrames[first-1].edges.filter(e=>!current.has(edgeKey(e))).forEach(([a,b])=>{
@@ -145,7 +151,7 @@
     }
     const background=pairs?absentEdges(pairs.nodes,pairs.edges):'';
     const status=index===0?'Initial molecule':index===groups[name].length-1?'Final molecule':`${group.actionCount} molecular updates shown together`;
-    return {image:svg(halo+background+frame.ink,'0 0 960 480'),status};
+    return {image:svg(halo+background+ink,'0 0 960 480'),status};
   }
   function draw(force=false){
     const fraction=Math.max(0,Math.min(1,(progress-.05)/.81));
