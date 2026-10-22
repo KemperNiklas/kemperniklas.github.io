@@ -3,6 +3,7 @@
   venue: "Preprint"
   year: 2026
   paper: "/assets/papers/trajectory-matching-preprint.pdf"
+  blog: "/blog/trajectory-matching/"
 
 - title: "What Expressivity Theory Misses: Message Passing Complexity for GNNs"
   authors: "Niklas Kemper, Tom Wollschläger, Stephan Günnemann"

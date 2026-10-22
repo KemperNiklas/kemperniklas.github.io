@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Opening figure — structured actions and single-component edits</title>
+  <link rel="stylesheet" href="preview.css">
+  <script src="../drafts-1-6/action-space-frames.js" defer></script>
+  <script src="bond-pairs.js" defer></script>
+  <script src="preview.js" defer></script>
+</head>
+<body>
+  <main>
+    <figure id="comparison" aria-label="Full generation sequences with structured actions and single-component edits">
+      <div class="tm-scope">
+        <span class="scope-label tm-label">Trajectory Matching</span>
+        <div class="comparison-columns">
+          <div class="panel structured-panel">
+            <h2 class="panel-title">Structured actions</h2>
+            <div class="stage" id="structured-stage" role="img" aria-label="Structured generation"></div>
+            <ul class="comparison-notes structured-notes">
+              <li><span class="comparison-face" aria-hidden="true">☺&#xfe0e;</span><span>Variable state size</span></li>
+              <li><span class="comparison-face" aria-hidden="true">☺&#xfe0e;</span><span>Joint changes to multiple components</span></li>
+              <li><span class="comparison-face" aria-hidden="true">☺&#xfe0e;</span><span>Actions can have prerequisites</span></li>
+            </ul>
+          </div>
+          <div class="factorized-scope">
+            <span class="scope-label factorized-label">Standard Discrete Flow Matching</span>
+            <div class="panel">
+              <h2 class="panel-title">Single-component edits</h2>
+              <div class="stage" id="component-stage" role="img" aria-label="Generation through single-component edits"></div>
+              <ul class="comparison-notes factorized-notes">
+                <li><span class="comparison-face" aria-hidden="true">☹&#xfe0e;</span><span>Fixed state size</span></li>
+                <li><span class="comparison-face" aria-hidden="true">☹&#xfe0e;</span><span>One component per edit</span></li>
+                <li><span class="comparison-face" aria-hidden="true">☹&#xfe0e;</span><span>Edits are conditionally independent</span></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </figure>
+    <div class="controls">
+      <div class="domain-menu">
+        <label for="domain">Domain</label>
+        <select id="domain">
+          <option value="molecules">Molecules</option>
+          <option value="hierarchies">Hierarchies</option>
+        </select>
+      </div>
+      <div class="playback"><button id="play">Play</button><button id="restart" aria-label="Replay animation">↺</button><input id="progress" type="range" min="0" max="1000" value="0" aria-label="Animation progress"></div>
+    </div>
+  </main>
+</body>
+</html>

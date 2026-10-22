@@ -1,0 +1,416 @@
+---
+layout: null
+title: "Trajectory Matching: Discrete Flow Matching with Structured Actions"
+description: "How trajectory matching extends discrete flow matching to structured actions, illustrated through molecule and hierarchy generation."
+excerpt: "How trajectory matching extends discrete flow matching to structured actions, illustrated through molecule and hierarchy generation."
+author: Niklas Kemper
+date: 2026-10-22 00:00:00 +0200
+permalink: /blog/trajectory-matching/
+---
+{% raw %}
+<!doctype html>
+<html lang="en"><head>
+<meta name="description" content="How trajectory matching extends discrete flow matching to structured actions, illustrated through molecule and hierarchy generation.">
+<meta name="author" content="Niklas Kemper">
+<link rel="canonical" href="https://niklaskemper.com/blog/trajectory-matching/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Trajectory Matching: Discrete Flow Matching with Structured Actions">
+<meta property="og:description" content="How trajectory matching extends discrete flow matching to structured actions, illustrated through molecule and hierarchy generation.">
+<meta property="og:url" content="https://niklaskemper.com/blog/trajectory-matching/">
+<meta name="twitter:card" content="summary">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trajectory Matching — Discrete Flow Matching with Structured Actions</title>
+<link rel="stylesheet" href="assets/katex/katex.min.css">
+<link rel="stylesheet" href="visuals/drafts-1-6/drafts.css"><link rel="stylesheet" href="blog.css"><link rel="stylesheet" href="visuals/dependency-spectrum/figure.css">
+<script src="assets/katex/katex.min.js" defer></script><script src="assets/math.js" defer></script>
+<script src="visuals/drafts-1-6/molecule-frames.js" defer></script>
+<script src="visuals/drafts-1-6/drafts.js" defer></script>
+<script src="visuals/drafts-1-6/action-space-frames.js" defer></script>
+<script src="visuals/drafts-1-6/action-spaces.js" defer></script>
+<script src="visuals/drafts-1-6/conditioned-frames.js" defer></script>
+<script src="visuals/drafts-1-6/conditioned.js" defer></script>
+<script src="visuals/drafts-1-6/hierarchy-frames.js" defer></script>
+<script src="visuals/drafts-1-6/hierarchy.js" defer></script></head>
+<body class="blog"><header class="article-header"><p class="eyebrow"><a href="/blog/">← Blog</a></p><h1>Trajectory Matching</h1><p class="subtitle">Discrete flow matching with structured actions</p><p class="article-byline"><a href="/">Niklas Kemper</a> · <time datetime="2026-10-22">October 22, 2026</time></p><div class="article-links"><a href="https://niklaskemper.com/assets/papers/trajectory-matching-preprint.pdf">Paper ↗</a></div></header>
+<nav class="article-nav" aria-label="Article sections"><a href="#factorized-flows">Background</a><a href="#trajectory-matching">Method</a><a href="#empirical-results">Results</a><a href="#trajectory-matching-subsumes-factorized-flows">Theory</a></nav><main class="article"><article><p>Consider building a molecule: it seems more natural to grow it by attaching whole fragments to a partial structure than by changing individual atom and bond features in a fixed-size noisy graph. Yet most <span class="method-factorized">discrete flow matching methods</span> are restricted to such single-component edits on a fixed-size state. <strong><span class="method-trajectory">Trajectory matching</span> extends discrete flow matching to structured actions that can change the size of a state, modify several components together, and depend on earlier actions.</strong></p>
+<figure class="blog-figure opener-comparison" id="v1" aria-labelledby="caption-v1"><iframe src="visuals/opener-comparison/index.html?embed" title="Compare structured actions and single-component edits in molecules or hierarchies"></iframe><figcaption id="caption-v1"><strong>Figure 1.</strong> Structured actions (left) and single-component edits (right) for molecule and hierarchy generation. Trajectory matching subsumes standard factorized flow matching while supporting general actions that may change the size of a state, affect multiple components, and depend on earlier actions.</figcaption></figure>
+<p>The key idea is to condition training not only on a source and target state but on a full <strong>trajectory</strong>: a valid sequence of actions connecting the two endpoints. The trajectory fixes which actions happen and in what order; we randomize only when they occur. This gives us tractable training targets even for structured actions with dependencies. Once trained, the model generates samples as in standard discrete flow matching, without needing a trajectory. We’ll illustrate these ideas in this post through molecular generation and hierarchy generation.</p>
+<p>To understand why trajectory conditioning helps, let’s first look at how standard discrete flow matching constructs its training targets.</p>
+<h2 id="factorized-flows">Factorized Flows</h2>
+<p>Let us briefly recap the standard Discrete Flow Matching formulation to understand where its limitations come from.</p>
+<p>Our goal is to transform an easy-to-sample source distribution <span class="tex-source" data-tex="p_{\mathrm{src}}">p_{\mathrm{src}}</span> into the data distribution <span class="tex-source" data-tex="p_{\mathrm{tgt}}">p_{\mathrm{tgt}}</span> over time <span class="tex-source" data-tex="t\in[0,1]">t\in[0,1]</span>. We do this through a <strong>continuous-time Markov chain</strong>: a process that moves between discrete states through random jumps. Writing <span class="tex-source" data-tex="S_t">S_t</span> for its state at time <span class="tex-source" data-tex="t">t</span>, the jump rate <span class="tex-source" data-tex="Q_t(s&#x27;\mid s)">Q_t(s&#x27;\mid s)</span> determines the probability of jumping from state <span class="tex-source" data-tex="s">s</span> to <span class="tex-source" data-tex="s&#x27;">s&#x27;</span> over a short time interval:</p>
+<div class="tex-source" data-tex="\Pr[S_{t+h}=s&#x27;\mid S_t=s]
+= h\,Q_t(s&#x27;\mid s)+o(h),
+\qquad s&#x27;\neq s." data-display="true">\Pr[S_{t+h}=s&#x27;\mid S_t=s]
+= h\,Q_t(s&#x27;\mid s)+o(h),
+\qquad s&#x27;\neq s.</div>
+<p>We want to learn rates such that the probability path, the time-marginal state distribution, <span class="tex-source" data-tex="p_t(s)=\Pr[S_t=s]">p_t(s)=\Pr[S_t=s]</span> starts at <span class="tex-source" data-tex="p_0 = p_{\mathrm{src}}">p_0 = p_{\mathrm{src}}</span> and ends at <span class="tex-source" data-tex="p_1 =p_{\mathrm{tgt}}">p_1 =p_{\mathrm{tgt}}</span>.</p>
+<p>Directly finding such rates is generally intractable. The central idea of flow matching is to construct simpler <strong>conditional processes</strong> connecting individual source and target states, <span class="tex-source" data-tex="s_I">s_I</span> and <span class="tex-source" data-tex="s_F">s_F</span>. To use this conditional process for training we need: i) easy <em>sampling</em> of intermediate <em>states</em> <span class="tex-source" data-tex="s_t">s_t</span>, ii) easy <em>computation</em> of its conditional <em>jump rates</em> <span class="tex-source" data-tex="Q_t(s&#x27; \mid s_t, s_I, s_F)">Q_t(s&#x27; \mid s_t, s_I, s_F)</span>. These conditional rates then provide supervision for an unconditional model <span class="tex-source" data-tex="Q^\theta_t(s&#x27; \mid s_t)">Q^\theta_t(s&#x27; \mid s_t)</span> that receives only the current state and time. Averaging this conditional supervision gives the marginal rates we want to learn.</p>
+<p>However, constructing such a conditional process is still not straightforward. In continuous space, a straight line connecting <span class="tex-source" data-tex="s_I">s_I</span> and <span class="tex-source" data-tex="s_F">s_F</span> already works. In discrete space, there is no equally obvious interpolation: we need to connect the endpoints through random jumps while keeping intermediate states easy to sample and jump rates easy to compute. Moreover, the state space is typically combinatorially large, so we need to restrict the allowed jumps to keep the process tractable.</p>
+<p>We can use that discrete states often consist of <em>individual components</em>: Tokens in a sequence or atom and bond features in a molecular graph. This lets us <strong>factorize the conditional process</strong> across components: each component simply switches from its source value to its target value at a random time, independently of the others. Sampling an intermediate state <span class="tex-source" data-tex="s_t">s_t</span> is easy: we simply sample each component’s value independently. Additionally, the resulting process only jumps between states that differ in exactly one component, so we only need rates for these local edits between neighboring states.</p>
+<p>This is the standard discrete flow matching construction which we call a <strong>factorized flow</strong>. It is easy to define and works well in many settings but makes three assumptions:</p>
+<ol><li><em>Fixed size:</em> source, target, and intermediate states all have the same number of components.</li><li><em>Single-component edits:</em> each jump changes only one component.</li><li><em>Independent conditional evolution:</em> given the endpoints, components evolve independently of each other.</li></ol>
+<p>This makes clear why structured actions cannot be expressed by factorized flows: Consider attaching a whole ring fragment to an existing atom: this action changes the size of the state, affects multiple atoms and bonds at once, and must wait until the attachment atom exists—creating a dependency between actions. This single action therefore already breaks all three assumptions.</p>
+<h2 id="trajectory-matching">Trajectory Matching</h2>
+<p>How can we build discrete flows that support these structured actions? We need to solve two problems:</p>
+<ol><li><strong>Defining the allowed jumps.</strong> Specifying a rate for every possible state-to-state transition is intractable. How can we restrict the transitions while still allowing complex jumps?</li><li><strong>Constructing training targets.</strong> We can no longer factorize the conditional process across components. How can we construct a conditional process that can be used for training?</li></ol>
+<h3 id="action-based-rates">Action-based rates</h3>
+<p>A general state-to-state rate <span class="tex-source" data-tex="Q_t(s&#x27;\mid s)">Q_t(s&#x27;\mid s)</span> could, in principle, represent complex jumps like a fragment insertion. However, specifying and learning rates for every possible state-to-state transition is not possible in practice. Instead, we describe the allowed transitions through a user-defined vocabulary of actions <span class="tex-source" data-tex="\mathcal{A}">\mathcal{A}</span>. An action maps the current state to a new state, <span class="tex-source" data-tex="s&#x27;=a(s)">s&#x27;=a(s)</span>. For example, an action might attach a particular ring fragment to atom 5 or add a new child to the root of a hierarchy. Instead of specifying a rate directly for next states, we define rates <span class="tex-source" data-tex="u_t(a \mid s)">u_t(a \mid s)</span> over all available actions <span class="tex-source" data-tex="a\in\mathcal A(s)">a\in\mathcal A(s)</span> at state <span class="tex-source" data-tex="s">s</span>. The probability of a jump from <span class="tex-source" data-tex="s">s</span> to <span class="tex-source" data-tex="s&#x27;">s&#x27;</span> then depends on the rate of taking an action that leads to this state:</p>
+<div class="tex-source" data-tex="\Pr[S_{t+h}=s&#x27;\mid S_t=s]
+=
+h\sum_{\substack{a\in\mathcal A(s)\\a(s)=s&#x27;}}
+u_t(a\mid s)+o(h),
+\qquad s&#x27;\neq s." data-display="true">\Pr[S_{t+h}=s&#x27;\mid S_t=s]
+=
+h\sum_{\substack{a\in\mathcal A(s)\\a(s)=s&#x27;}}
+u_t(a\mid s)+o(h),
+\qquad s&#x27;\neq s.</div>
+<p>Choosing the action vocabulary lets us restrict jumps to meaningful domain-specific edits, giving the model a useful inductive bias. For example, we design actions for a hierarchy-generation task that guarantee validity by construction. Additionally, actions also give us a description of transitions that generalize well across states: the same fragment-attachment action can apply to different intermediate molecules, producing a different next state in each case.</p>
+<figure class="blog-figure" id="v2" aria-labelledby="caption-v2"><figcaption id="caption-v2">One action, different molecules</figcaption>
+    <div id="reuse-molecules" class="reaction-list"></div>
+</figure>
+<p>Single-component edits are a special case: the actions simply set one component to a particular value. Factorized flows therefore fit naturally into this action-based description.</p>
+<p>The action vocabulary specifies which jumps the model can make. We still need a conditional process that provides tractable training targets for their rates.</p>
+<h3 id="trajectory-conditioned-training">Trajectory-conditioned training</h3>
+<p>We now need a conditional process connecting <span class="tex-source" data-tex="s_I">s_I</span> to <span class="tex-source" data-tex="s_F">s_F</span> through these actions, with intermediate states that are easy to sample and rates that are easy to compute. We can no longer rely on the factorized component-wise construction. Instead, we face two difficulties:</p>
+<p><strong>Which actions should be taken?</strong> In factorized flows, the remaining edits are clear from the current state and the target: every component that differs from its target value still needs to switch. With structured actions, different sets of actions may connect the same endpoints. For example, if the vocabulary allows both, we could build the same structure atom by atom or insert a whole fragment.</p>
+<figure class="blog-figure" id="v3" aria-labelledby="caption-v3"><figcaption id="caption-v3">Same endpoints, different actions</figcaption>
+    <div class="molecule-routes">
+    <div id="fragment-trajectory" class="fragment-shortcut" aria-label="One fragment insertion"></div>
+    <div id="atom-trajectory" class="trajectory-strip" aria-label="Three atom insertions followed by a ring-closing bond"></div>
+    </div>
+</figure>
+<p><strong>In which order can they occur?</strong> In factorized flows, the required component edits can occur in any order. Structured actions may have prerequisites: an attachment atom must exist before a fragment can be attached to it, a child can only be added to an existing parent. A valid conditional process must respect these dependencies.</p>
+<figure class="blog-figure" id="v4" aria-labelledby="caption-v4"><figcaption id="caption-v4">A child needs its parent</figcaption>
+    <div id="dependency-diagram" class="dependency-row"></div>
+    <div class="availability-key"><span class="available">Available</span><span class="blocked">Prerequisites missing</span></div>
+</figure>
+<p>The endpoints therefore leave us with choices about both which actions to take and how to order them. Defining a conditional process that accounts for these choices while remaining easy to sample and supervise seems very hard.</p>
+<h3 id="defining-trajectories">Defining Trajectories</h3>
+<p>Our central idea is to condition during training not only on the endpoints, but also on a complete sequence of valid actions connecting them: a trajectory.</p>
+<div class="tex-source" data-tex="\tau:\quad
+s_I=s_0
+\xrightarrow{a_1}s_1
+\xrightarrow{a_2}\cdots
+\xrightarrow{a_n}s_n=s_F." data-display="true">\tau:\quad
+s_I=s_0
+\xrightarrow{a_1}s_1
+\xrightarrow{a_2}\cdots
+\xrightarrow{a_n}s_n=s_F.</div>
+<p>The <strong>trajectory fixes which actions happen and in what order</strong>. All that remains is to specify when each action happens.</p>
+<p>In factorized flows with a linear schedule, each required component edit happens at an independent, uniformly sampled time in <span class="tex-source" data-tex="[0,1]">[0,1]</span>. We keep these random event times, but assign them according to the trajectory: sample <span class="tex-source" data-tex="n">n</span> uniform times, sort them, and execute action <span class="tex-source" data-tex="a_i">a_i</span> at the <span class="tex-source" data-tex="i">i</span>-th event. At time <span class="tex-source" data-tex="t">t</span>, the number of events that have occurred is therefore <span class="tex-source" data-tex="K_t\sim\mathrm{Binomial}(n,t)">K_t\sim\mathrm{Binomial}(n,t)</span>. The state is simply the one reached after that many actions:</p>
+<div class="tex-source" data-tex="S_t=s_{K_t},
+\qquad
+p_t(s_i\mid\tau)=\binom{n}{i}t^i(1-t)^{n-i}." data-display="true">S_t=s_{K_t},
+\qquad
+p_t(s_i\mid\tau)=\binom{n}{i}t^i(1-t)^{n-i}.</div>
+<p>Sampling an intermediate state is therefore easy: draw <span class="tex-source" data-tex="K_t">K_t</span> and select <span class="tex-source" data-tex="s_{K_t}">s_{K_t}</span>. The conditional jump rate also has a simple interpretation. At state <span class="tex-source" data-tex="s_i">s_i</span>, only the next action in the trajectory has positive rate:</p>
+<div class="tex-source" data-tex="u_t(a\mid s_i,\tau)=\frac{n-i}{1-t}\,\mathbf{1}\{a=a_{i+1}\},\qquad i&lt;n,\quad t&lt;1." data-display="true">u_t(a\mid s_i,\tau)=\frac{n-i}{1-t}\,\mathbf{1}\{a=a_{i+1}\},\qquad i&lt;n,\quad t&lt;1.</div>
+<p>As in factorized flows, the rate increases as the remaining time shrinks. Here, it also scales with the number of remaining actions: more actions left means the next event needs to happen sooner. The order is enforced by allowing only the next action to occur. Once we reach <span class="tex-source" data-tex="s_n">s_n</span>, all rates are zero.</p>
+<figure class="blog-figure" id="v6" aria-labelledby="caption-v6"><figcaption id="caption-v6">Fixed order, random event times</figcaption>
+    <div class="labeled-trajectory"><span class="trajectory-symbol" data-tex="\tau:"></span><div id="flow-trajectory" class="trajectory-strip" aria-label="Fixed trajectory and its actions"></div></div>
+    <svg id="flow-timeline" role="slider" tabindex="0" aria-label="Time. Drag the line or use the arrow keys." aria-valuemin="0" aria-valuemax="1" aria-valuenow="0.38"></svg>
+    <div class="flow-diagram"><svg id="flow-tree" role="img" aria-label="Current tree and next action, with rate encoded by edge thickness"></svg><span id="flow-rate-label"></span></div>
+    <div id="flow-computation" class="flow-computation" aria-live="off"></div>
+    <p id="flow-note" class="rate-note">All other rates are 0.</p>
+    <div class="controls"><button id="flow-play">Play</button><button id="flow-resample">New event times</button></div>
+</figure>
+<p>Given a trajectory, we thus have both ingredients we need for training: we can easily sample an intermediate state and compute its conditional action rates directly. But where do the trajectories come from?</p>
+<h3 id="sampling-trajectories">Sampling trajectories</h3>
+<p>As we have already seen, many different valid trajectories may connect the two endpoints <span class="tex-source" data-tex="s_I">s_I</span> and <span class="tex-source" data-tex="s_F">s_F</span>. We model this using a <strong>distribution over trajectories</strong>:</p>
+<div class="tex-source" data-tex="\tau\sim q(\cdot\mid s_I,s_F)." data-display="true">\tau\sim q(\cdot\mid s_I,s_F).</div>
+<p>This distribution specifies which ways of connecting the endpoints we see, and how often we see them during training. It therefore introduces an inductive bias about how objects should be constructed. Our main requirement is that we can efficiently sample valid trajectories from it. How we do this depends on the domain and the action vocabulary.</p>
+<p>For example, consider growing a hierarchy by attaching children to existing nodes. Starting from the root of a target hierarchy, we can repeatedly choose a node whose parent has already been added and attach it. Different choices produce different valid construction orders; the rule for choosing among available nodes defines <span class="tex-source" data-tex="q">q</span>.</p>
+<figure class="blog-figure" id="v5" aria-labelledby="caption-v5"><figcaption id="caption-v5">Different construction orders</figcaption>
+    <div class="controls"><span class="trajectory-distribution" data-tex="\tau\sim q(\cdot\mid s_I,s_F)"></span><select id="trajectory-policy" aria-label="Ordering policy"><option value="dfs">DFS</option><option value="bfs">BFS</option><option value="uniform" selected>Uniform random ordering</option></select><button id="trajectory-sample">Sample order</button></div>
+    <div class="labeled-trajectory"><span class="trajectory-symbol" data-tex="\tau:"></span><div id="tree-trajectory" class="trajectory-strip" aria-label="Full sampled tree trajectory"></div></div>
+</figure>
+<p>Importantly, we do not need a dataset of observed trajectories but directly construct them from the endpoints.</p>
+<h3 id="training">Training</h3>
+<p>Training now works much like standard discrete flow matching, except that we sample not only endpoints but also a trajectory connecting them. We then sample a time and an intermediate state along that trajectory. The model receives only the sampled state and time—not the trajectory or target endpoint—and predicts action rates. The trajectory supplies the supervision: it tells us what rates to train those predictions against.</p>
+<figure class="blog-figure" id="v7" aria-labelledby="caption-v7"><figcaption id="caption-v7">Training step</figcaption>
+    <div class="training-setup">
+      <ol class="training-steps">
+        <li><span>Sample endpoints:</span><span data-tex="s_I\sim p_{\mathrm{src}},\quad s_F\sim p_{\mathrm{tgt}}"></span></li>
+        <li><span>Sample trajectory:</span><span data-tex="\tau\sim q(\cdot\mid s_I,s_F)"></span></li>
+        <li><span>Sample time and intermediate state:</span><span id="training-draw"></span></li>
+      </ol>
+      <button id="training-sample">Sample example</button>
+    </div>
+    <div class="labeled-trajectory"><span class="trajectory-symbol" data-tex="\tau:"></span><div id="training-trajectory" class="trajectory-strip" aria-label="Trajectory with the sampled intermediate state selected"></div></div>
+    <div class="training-comparison-heading"><ol class="training-steps" start="4"><li>Match predicted and target rates.</li></ol></div>
+    <div class="training-layout">
+      <div class="state-input"><div class="small-heading">Model input</div><div id="training-time" class="small-detail"></div><svg id="training-state" role="img" aria-label="Sampled state and available child additions"></svg></div>
+      <div class="model-bridge"><span class="bridge-line"></span><span class="model-box">Model</span><span class="bridge-line"></span></div>
+      <div class="rates-panel"><div id="training-rates" role="img" aria-label="Predicted rates compared with trajectory-conditioned targets"></div></div>
+    </div>
+    <p class="draft-note">Illustrative model rates. The model receives only the sampled state and time.</p>
+</figure>
+<p>Training remains simulation-free because we can sample intermediate states directly from the trajectory. As in standard flow matching, the conditional supervision gives us the marginal rate we want to learn: the training objective has the same expected gradients as directly matching the marginal rate, and its optimum recovers that rate (when the model is sufficiently expressive).</p>
+<h3 id="sampling">Sampling</h3>
+<p>At generation time, we simulate the learned jump process using, for example, Euler sampling. We start from a sample of the source distribution and, at each step, predict action rates from the current state and time. Together with the step size, these rates determine the probability of applying each available action. No trajectory or target endpoint is needed.</p>
+<figure class="blog-figure" id="v8" aria-labelledby="caption-v8"><figcaption id="caption-v8">Generating with the learned model</figcaption>
+    <div class="figure-topline"><span id="generation-time"></span><span class="small-detail">Euler step <span data-tex="(\Delta t=0.2)">Δt = 0.2</span></span></div>
+    <div id="generation-progress" aria-hidden="true"></div>
+    <div id="generation-layout" class="generation-layout">
+      <div><div class="small-heading">Current state</div><svg id="generation-before" role="img" aria-label="Current generated tree and available additions"></svg></div>
+      <div class="rates-panel"><div class="small-heading">Predicted rates</div><div class="generation-rate-stage"><div id="generation-rates" role="img" aria-label="Rates and sampled actions"></div></div><div id="generation-selection" class="small-detail"></div></div>
+      <div class="generation-arrow"><span>Apply</span><span>→</span></div>
+      <div><div class="small-heading" id="generation-after-title">Next state</div><svg id="generation-after" role="img" aria-label="Tree after applying the sampled actions"></svg></div>
+    </div>
+    <div class="controls generation-controls"><button id="generation-play">Play</button><button id="generation-step">Next step</button><button id="generation-resample">New sample</button></div>
+    <p class="draft-note">Illustrative model rates. New nodes become attachment sites on the next step.</p>
+</figure>
+<p>Notice that while each trajectory-conditioned target assigns positive rate to only one next action, the learned marginal rate averages over trajectories and can assign positive rates to several available actions. A single Euler step can therefore apply multiple compatible actions, so trajectory conditioning does not force generation to proceed one action at a time.</p>
+<h2 id="empirical-results">Empirical results</h2>
+<p>Let’s see practical use cases of trajectory matching: To generate a tree, we can start from a root and repeatedly attach children. These actions guarantee validity by construction as they cannot introduce a cycle or disconnect the tree.</p>
+<figure class="blog-figure compact-figure" id="results-growth"><figcaption>GrowHierarchy</figcaption><div id="results-hierarchy" role="img" aria-label="Recorded GrowHierarchy generation"></div><div class="hierarchy-action">AddChild</div><div class="controls"><button id="hierarchy-play">Pause</button><button id="hierarchy-replay">Replay</button><input id="hierarchy-progress" type="range" min="0" max="1000" value="0" aria-label="GrowHierarchy playback position"></div></figure>
+<p>This pays off especially when using few sampling steps, where the factorized baseline often produces invalid trees.</p>
+<p>For molecular graph generation, we can showcase the flexibility of our approach by using different action spaces that range from factorized single-component edits to insertion of full fragments:</p>
+<figure class="blog-figure" id="v9" aria-labelledby="caption-v9"><figcaption id="caption-v9">Different molecular action spaces</figcaption>
+    <div class="action-spaces-grid">
+      <div class="action-space-panel">
+        <h3>BondEdit</h3>
+        <div id="action-space-BondEdit" class="molecular-stage" role="img" aria-label="BondEdit trajectory"></div>
+        <div class="molecular-actions"><div><span data-action="AddBond">AddBond</span><span data-action="DelBond">DelBond</span></div><div><span data-action="ChangeAtomFeature">ChangeAtomFeature</span><span data-action="ChangeBondFeature">ChangeBondFeature</span></div></div>
+        <p class="draft-note">Factorized baseline. Denoise a molecule by editing individual atom and bond features in a fixed-size molecular graph.</p>
+      </div>
+      <div class="action-space-panel">
+        <h3>AtomGrow</h3>
+        <div id="action-space-AtomGrow" class="molecular-stage" role="img" aria-label="AtomGrow trajectory"></div>
+        <div class="molecular-actions"><div><span data-action="AddAtom">AddAtom</span><span data-action="AddBond">AddBond</span></div></div>
+        <p class="draft-note">Grow a molecule by attaching atoms and adding bonds to close rings.</p>
+      </div>
+      <div class="action-space-panel">
+        <h3>FragGrow</h3>
+        <div id="action-space-FragGrow" class="molecular-stage" role="img" aria-label="FragGrow trajectory"></div>
+        <div class="molecular-actions"><div><span data-action="AddAtom">AddAtom</span><span data-action="AddFrag">AddFrag</span></div></div>
+        <p class="draft-note">Grow a molecule by attaching atoms and whole ring fragments.</p>
+      </div>
+      <div class="action-space-panel">
+        <h3>MolEdit</h3>
+        <div id="action-space-MolEdit" class="molecular-stage" role="img" aria-label="MolEdit trajectory"></div>
+        <div class="molecular-actions"><div><span data-action="AddAtom">AddAtom</span><span data-action="DelAtom">DelAtom</span><span data-action="AddBond">AddBond</span><span data-action="DelBond">DelBond</span></div><div><span data-action="ChangeAtomFeature">ChangeAtomFeature</span><span data-action="ChangeBondFeature">ChangeBondFeature</span></div></div>
+        <p class="draft-note">Denoise a molecule with edits that can also add or delete atoms, changing its size.</p>
+      </div>
+    </div>
+    <div class="controls molecular-controls"><button id="action-spaces-play">Pause</button><button id="action-spaces-replay">Replay</button><input id="action-spaces-progress" type="range" min="0" max="1000" value="0" aria-label="Trajectory playback position"></div>
+</figure>
+<p>In our experiments, fragment insertion works particularly well. Building with larger molecular pieces gives the model a useful inductive bias for generating valid molecules.</p>
+<p>The choice of actions also shapes what we can do with the trained model. AtomGrow learns to grow molecules from partial structures, so we can directly use it for substructure extension and linking simply by changing its starting state. Without retraining, it substantially outperforms the adapted factorized baseline on both tasks.</p>
+<figure class="blog-figure" id="v10" aria-labelledby="caption-v10"><figcaption id="caption-v10">Extension and linking with AtomGrow</figcaption>
+    <div class="conditioned-examples">
+      <div class="conditioned-example">
+        <h3>Extension</h3>
+        <div class="conditioned-reaction">
+          <div id="conditioned-source-Extension" class="conditioned-source" role="img" aria-label="Supplied quinoline substructure"></div>
+          <div class="conditioned-arrow" aria-hidden="true">→</div>
+          <div id="conditioned-Extension" class="molecular-stage" role="img" aria-label="Molecular extension trajectory"></div>
+        </div>
+      </div>
+      <div class="conditioned-example">
+        <h3>Linking</h3>
+        <div class="conditioned-reaction">
+          <div id="conditioned-source-Linking" class="conditioned-source" role="img" aria-label="Two supplied disconnected substructures: benzodioxole and piperazine"></div>
+          <div class="conditioned-arrow" aria-hidden="true">→</div>
+          <div id="conditioned-Linking" class="molecular-stage" role="img" aria-label="Molecular linking trajectory"></div>
+        </div>
+      </div>
+    </div>
+    <div class="conditioned-key"><span></span>Generated additions</div>
+    <div class="controls molecular-controls"><button id="conditioned-play">Pause</button><button id="conditioned-replay">Replay</button><input id="conditioned-progress" type="range" min="0" max="1000" value="0" aria-label="Extension and linking playback position"></div>
+    <p class="draft-note">AtomGrow model trained on unconditional molecule generation (starting from a random number of roots) transfers zero-shot to substructure extension and linking, outperforming an adapted factorized baseline.</p>
+</figure>
+<p>We’ve now seen the practical potential of flow matching with structured actions. If you’d like to explore the theory further, the next section shows precisely how trajectory matching recovers factorized flows and extends them to actions with dependencies.</p>
+<h2 id="trajectory-matching-subsumes-factorized-flows">Trajectory Matching Subsumes Factorized Flows</h2>
+<p>Trajectory matching trains on a single next action in a trajectory, while factorized flows supervise on all independent component edits. How are these two constructions connected? The key is to look at what happens when we average over different action orderings.</p>
+<h3 id="rao-blackwellized-rates">Rao–Blackwellized Rates</h3>
+<p>So far, we have used one sampled trajectory to construct each training target. That trajectory selects a single next action. But other trajectories connecting the same endpoints may pass through the same intermediate state and select a different action. Can we directly supervise on all possible next actions?</p>
+<p>To weight each trajectory correctly, we define its posterior probability given the current state, time, and endpoints:</p>
+<div class="tex-source" data-tex="p_t(\tau\mid s,s_I,s_F)
+=
+\frac{p_t(s\mid\tau)\,q(\tau\mid s_I,s_F)}
+{\sum_{\tau&#x27;}p_t(s\mid\tau&#x27;)\,q(\tau&#x27;\mid s_I,s_F)}." data-display="true">p_t(\tau\mid s,s_I,s_F)
+=
+\frac{p_t(s\mid\tau)\,q(\tau\mid s_I,s_F)}
+{\sum_{\tau&#x27;}p_t(s\mid\tau&#x27;)\,q(\tau&#x27;\mid s_I,s_F)}.</div>
+<p>Averaging the trajectory-conditioned action rates under this posterior gives the Rao–Blackwellized rate:</p>
+<div class="tex-source" data-tex="\bar u_t(a\mid s,s_I,s_F)
+=
+\mathbb E_{\tau\sim p_t(\cdot\mid s,s_I,s_F)}
+\left[u_t(a\mid s,\tau)\right]." data-display="true">\bar u_t(a\mid s,s_I,s_F)
+=
+\mathbb E_{\tau\sim p_t(\cdot\mid s,s_I,s_F)}
+\left[u_t(a\mid s,\tau)\right].</div>
+<p>When this average is efficient to compute, we can use it directly as the training target. It preserves the expected gradient and optimum while reducing gradient variance. It also makes the connection to factorized flows explicit, as we’ll see next.</p>
+<h3 id="recovering-factorized-flows">Recovering Factorized Flows</h3>
+<p>Let&#x27;s see how to recover factorized flows using trajectory matching. To instantiate trajectory matching, we have to answer two questions: which actions should we use, and what trajectory distribution should we choose?</p>
+<p>The action vocabulary is straightforward: single-component edits, each setting one component to a particular value.</p>
+<p>The trajectory distribution also admits an intuitive form. Given the endpoints, the required actions are fixed: each component that differs from its target value must be set to that value. We denote this action set by <span class="tex-source" data-tex="\alpha(s_I,s_F)">\alpha(s_I,s_F)</span>. These actions affect different components, so they are independent and can occur in any order. A natural choice is therefore to sample uniformly over all orderings of this set.</p>
+<p>Now suppose the remaining action set <span class="tex-source" data-tex="\alpha(s,s_F)">\alpha(s,s_F)</span> at state <span class="tex-source" data-tex="s">s</span> contains <span class="tex-source" data-tex="m">m</span> actions. Each is equally likely to come next, with probability <span class="tex-source" data-tex="\frac{1}{m}">\frac{1}{m}</span>, and receives rate <span class="tex-source" data-tex="\frac{m}{1-t}">\frac{m}{1-t}</span> when it does. Averaging gives the Rao–Blackwellized rates:</p>
+<div class="tex-source" data-tex="\bar u_t(a\mid s,s_I,s_F)
+=
+\frac{\mathbf{1}\{a\in\alpha(s,s_F)\}}{1-t}." data-display="true">\bar u_t(a\mid s,s_I,s_F)
+=
+\frac{\mathbf{1}\{a\in\alpha(s,s_F)\}}{1-t}.</div>
+<p>These are exactly the rates used to train factorized flows with a linear schedule! The intermediate-state distribution also matches: each required component edit has independently occurred by time <span class="tex-source" data-tex="t">t</span> with probability <span class="tex-source" data-tex="t">t</span>.</p>
+<p>With Rao–Blackwellized targets, we therefore recover the factorized flow matching objective exactly. Single-trajectory targets give the same expected gradients and minimizers, though with potentially higher gradient variance. Factorized flows are thus a special case of trajectory matching.</p>
+<h3 id="beyond-independent-actions">Beyond Independent Actions</h3>
+<p>Let&#x27;s see what happens in trajectory matching if we go beyond independent actions. A natural next step is to keep the required action set fixed, but introduce tree-like dependencies. Both GrowHierarchy and FragGrow are examples of this.</p>
+<p>We represent these dependencies as a forest over actions: each node is an action, and an edge means that the parent action must happen before the child. Actions with no directed path between them are required to be independent, so their relative order does not matter.</p>
+<figure class="blog-figure" id="v11" aria-labelledby="caption-v11"><figcaption id="caption-v11">Action dependencies for FragGrow</figcaption>
+    <div class="frag-layout"><div class="frag-molecule-column"><div class="small-heading">Target molecule <span class="" data-tex="s_F"></span></div><div class="frag-molecule" style="aspect-ratio:720/340" role="img" aria-label="Target molecule decomposed into seven actions. The marked carbon is the initial state sI."><svg viewBox="0 0 720 340" aria-hidden="true"><line x1="195.1495934585403" y1="198.88701492261376" x2="192.5495934585403" y2="221.24701492261374" stroke="#b7cbea" stroke-width="1.2"/><line x1="161.65384615384613" y1="144.4892637329359" x2="153.33384615384614" y2="126.8092637329359" stroke="#b7cbea" stroke-width="1.2"/><line x1="378.6464697325516" y1="141.4261244051611" x2="376.56646973255164" y2="119.58612440516109" stroke="#b7cbea" stroke-width="1.2"/><line x1="410.3922170372458" y1="197.82387559483894" x2="410.3922170372458" y2="220.18387559483892" stroke="#b7cbea" stroke-width="1.2"/><line x1="456.20393610574865" y1="197.27115296547575" x2="456.20393610574865" y2="237.31115296547574" stroke="#b7cbea" stroke-width="1.2"/><line x1="252.2772842908518" y1="126.88381847420953" x2="235.2772842908518" y2="96.88381847420953" stroke="#72767d" stroke-width="1.3"/><path class="bond-0 atom-0 atom-1" d="M 165.7,153.0 L 177.4,166.4" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-0 atom-0 atom-1" d="M 177.4,166.4 L 189.2,179.9" style="fill:none;fill-rule:evenodd;stroke:#FF0000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-1 atom-1 atom-2" d="M 204.0,186.6 L 223.1,182.9" style="fill:none;fill-rule:evenodd;stroke:#FF0000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-1 atom-1 atom-2" d="M 223.1,182.9 L 242.2,179.1" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-2 atom-2 atom-3" d="M 242.2,179.1 L 257.3,134.9" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-2 atom-2 atom-3" d="M 250.1,177.5 L 262.6,141.0" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-3 atom-3 atom-4" d="M 257.3,134.9 L 303.1,125.8" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-4 atom-4 atom-5" d="M 303.1,125.8 L 333.8,161.0" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-4 atom-4 atom-5" d="M 300.5,133.5 L 325.9,162.5" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-5 atom-5 atom-6" d="M 333.8,161.0 L 379.6,151.9" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-6 atom-6 atom-7" d="M 379.6,151.9 L 410.4,187.1" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-7 atom-7 atom-8" d="M 410.4,187.1 L 430.0,183.2" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-7 atom-7 atom-8" d="M 430.0,183.2 L 449.6,179.3" style="fill:none;fill-rule:evenodd;stroke:#0000FF;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-8 atom-8 atom-9" d="M 462.8,185.5 L 474.9,199.3" style="fill:none;fill-rule:evenodd;stroke:#0000FF;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-8 atom-8 atom-9" d="M 474.9,199.3 L 486.9,213.2" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-9 atom-9 atom-10" d="M 486.9,213.2 L 532.8,204.1" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-10 atom-10 atom-11" d="M 532.8,204.1 L 538.9,186.2" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-10 atom-10 atom-11" d="M 538.9,186.2 L 545.0,168.3" style="fill:none;fill-rule:evenodd;stroke:#FF0000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-11 atom-11 atom-12" d="M 540.6,151.7 L 528.9,138.2" style="fill:none;fill-rule:evenodd;stroke:#FF0000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-11 atom-11 atom-12" d="M 528.9,138.2 L 517.1,124.8" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-12 atom-12 atom-13" d="M 517.1,124.8 L 471.3,133.8" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-13 atom-5 atom-14" d="M 333.8,161.0 L 318.8,205.2" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-14 atom-14 atom-15" d="M 318.8,205.2 L 273.0,214.2" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-14 atom-14 atom-15" d="M 313.4,199.1 L 275.6,206.6" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-15 atom-15 atom-2" d="M 273.0,214.2 L 242.2,179.1" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-16 atom-13 atom-8" d="M 471.3,133.8 L 465.1,151.8" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-16 atom-13 atom-8" d="M 465.1,151.8 L 459.0,169.9" style="fill:none;fill-rule:evenodd;stroke:#0000FF;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path d="M 256.5,137.1 L 257.3,134.9 L 259.6,134.4" style="fill:none;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;" />
+<path d="M 300.8,126.3 L 303.1,125.8 L 304.6,127.6" style="fill:none;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;" />
+<path d="M 377.4,152.4 L 379.6,151.9 L 381.2,153.7" style="fill:none;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;" />
+<path d="M 408.9,185.3 L 410.4,187.1 L 411.4,186.9" style="fill:none;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;" />
+<path d="M 486.3,212.5 L 486.9,213.2 L 489.2,212.7" style="fill:none;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;" />
+<path d="M 530.5,204.6 L 532.8,204.1 L 533.1,203.2" style="fill:none;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;" />
+<path d="M 517.7,125.4 L 517.1,124.8 L 514.8,125.2" style="fill:none;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;" />
+<path d="M 473.6,133.4 L 471.3,133.8 L 471.0,134.7" style="fill:none;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;" />
+<path d="M 319.5,203.0 L 318.8,205.2 L 316.5,205.6" style="fill:none;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;" />
+<path d="M 275.2,213.8 L 273.0,214.2 L 271.4,212.5" style="fill:none;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;" />
+<path class="atom-1" d="M 190.3 188.2 Q 190.3 185.0, 191.9 183.2 Q 193.5 181.4, 196.4 181.4 Q 199.3 181.4, 200.9 183.2 Q 202.5 185.0, 202.5 188.2 Q 202.5 191.4, 200.9 193.2 Q 199.3 195.0, 196.4 195.0 Q 193.5 195.0, 191.9 193.2 Q 190.3 191.4, 190.3 188.2 M 196.4 193.5 Q 198.4 193.5, 199.5 192.2 Q 200.6 190.8, 200.6 188.2 Q 200.6 185.6, 199.5 184.3 Q 198.4 182.9, 196.4 182.9 Q 194.4 182.9, 193.3 184.3 Q 192.2 185.6, 192.2 188.2 Q 192.2 190.8, 193.3 192.2 Q 194.4 193.5, 196.4 193.5 " fill="#FF0000" />
+<path class="atom-8" d="M 453.3 171.4 L 457.6 178.4 Q 458.0 179.1, 458.7 180.4 Q 459.4 181.6, 459.5 181.7 L 459.5 171.4 L 461.2 171.4 L 461.2 184.6 L 459.4 184.6 L 454.8 177.0 Q 454.2 176.1, 453.6 175.1 Q 453.1 174.0, 452.9 173.7 L 452.9 184.6 L 451.2 184.6 L 451.2 171.4 L 453.3 171.4 " fill="#0000FF" />
+<path class="atom-11" d="M 541.8 160.0 Q 541.8 156.8, 543.3 155.0 Q 544.9 153.2, 547.8 153.2 Q 550.8 153.2, 552.3 155.0 Q 553.9 156.8, 553.9 160.0 Q 553.9 163.2, 552.3 165.0 Q 550.7 166.8, 547.8 166.8 Q 544.9 166.8, 543.3 165.0 Q 541.8 163.2, 541.8 160.0 M 547.8 165.3 Q 549.8 165.3, 550.9 164.0 Q 552.0 162.6, 552.0 160.0 Q 552.0 157.4, 550.9 156.0 Q 549.8 154.7, 547.8 154.7 Q 545.8 154.7, 544.7 156.0 Q 543.6 157.3, 543.6 160.0 Q 543.6 162.6, 544.7 164.0 Q 545.8 165.3, 547.8 165.3 " fill="#FF0000" />
+<circle cx="257.2772842908518" cy="134.88381847420953" r="3.7" fill="#17191d"/></svg><span class="frag-molecule-label " style="left:40.003%;top:50.009%" data-tex="a_1"></span><span class="frag-molecule-label " style="left:26.583%;top:67.981%" data-tex="a_2"></span><span class="frag-molecule-label " style="left:20.785%;top:34.997%" data-tex="a_3"></span><span class="frag-molecule-label " style="left:52.173%;top:32.331%" data-tex="a_4"></span><span class="frag-molecule-label " style="left:56.999%;top:67.669%" data-tex="a_5"></span><span class="frag-molecule-label " style="left:63.362%;top:75.006%" data-tex="a_6"></span><span class="frag-molecule-label " style="left:69.724%;top:49.697%" data-tex="a_7"></span><span class="frag-molecule-label frag-seed-label" style="left:31.705%;top:23.495%" data-tex="s_I"></span></div></div><div><div class="small-heading">Action dependencies <span class="" data-tex="\alpha(s_I,s_F)"></span></div><div class="frag-action-tree" style="height:410px"><svg viewBox="0 0 440 410" preserveAspectRatio="none" aria-hidden="true"><defs><marker id="frag-arrow-0" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 1 L 7 4 L 0 7" fill="none" stroke="#c8cdd5" stroke-width="1.3"/></marker></defs><path d="M 220 52 L 105 86" fill="none" stroke="#c8cdd5" stroke-width="1.4" marker-end="url(#frag-arrow-0)"/><path d="M 105 138 L 105 172" fill="none" stroke="#c8cdd5" stroke-width="1.4" marker-end="url(#frag-arrow-0)"/><path d="M 220 52 L 335 86" fill="none" stroke="#c8cdd5" stroke-width="1.4" marker-end="url(#frag-arrow-0)"/><path d="M 335 138 L 335 172" fill="none" stroke="#c8cdd5" stroke-width="1.4" marker-end="url(#frag-arrow-0)"/><path d="M 335 224 L 335 258" fill="none" stroke="#c8cdd5" stroke-width="1.4" marker-end="url(#frag-arrow-0)"/><path d="M 335 310 L 335 344" fill="none" stroke="#c8cdd5" stroke-width="1.4" marker-end="url(#frag-arrow-0)"/></svg><div class="frag-action-node " style="left:50.0000%;top:27px"><span class="" data-tex="a_1"></span><span class="frag-action-name">AddFrag(benzene)</span></div><div class="frag-action-node " style="left:23.8636%;top:113px"><span class="" data-tex="a_2"></span><span class="frag-action-name">AddAtom(O)</span></div><div class="frag-action-node " style="left:23.8636%;top:199px"><span class="" data-tex="a_3"></span><span class="frag-action-name">AddAtom(C)</span></div><div class="frag-action-node " style="left:76.1364%;top:113px"><span class="" data-tex="a_4"></span><span class="frag-action-name">AddAtom(C)</span></div><div class="frag-action-node " style="left:76.1364%;top:199px"><span class="" data-tex="a_5"></span><span class="frag-action-name">AddAtom(C)</span></div><div class="frag-action-node " style="left:76.1364%;top:285px"><span class="" data-tex="a_6"></span><span class="frag-action-name">AddAtom(N)</span></div><div class="frag-action-node " style="left:76.1364%;top:371px"><span class="" data-tex="a_7"></span><span class="frag-action-name">AddFrag(morpholine)</span></div></div></div></div>
+</figure>
+<p>As before, we choose a trajectory distribution that is uniform over all valid action orderings, now the topological orderings of the dependency forest.</p>
+<p>At an intermediate state <span class="tex-source" data-tex="s">s</span>, consider the forest of remaining actions, <span class="tex-source" data-tex="\alpha(s,s_F)">\alpha(s,s_F)</span>. Only its roots are currently available: every other action still has an unmet prerequisite. Additionally, an available action is more likely to come next when more remaining actions depend on it, i.e., the size <span class="tex-source" data-tex="\operatorname{desc}(a)">\operatorname{desc}(a)</span> of the subtree rooted at <span class="tex-source" data-tex="a">a</span> (including <span class="tex-source" data-tex="a">a</span> itself) is large. The Rao–Blackwellized rates capture exactly this:</p>
+<div class="tex-source" data-tex="\bar u_t(a\mid s,s_I,s_F)
+=
+\mathbf{1}\{a\in\operatorname{roots}(\alpha(s,s_F))\}
+\frac{\operatorname{desc}_{\alpha(s,s_F)}(a)}{1-t}." data-display="true">\bar u_t(a\mid s,s_I,s_F)
+=
+\mathbf{1}\{a\in\operatorname{roots}(\alpha(s,s_F))\}
+\frac{\operatorname{desc}_{\alpha(s,s_F)}(a)}{1-t}.</div>
+<figure class="blog-figure" id="v12" aria-labelledby="caption-v12"><figcaption id="caption-v12">Rao–Blackwellized rates for FragGrow</figcaption>
+    <div class="frag-layout"><div class="frag-molecule-column"><div class="small-heading">Current state <span class="" data-tex="s_t"></span></div><div class="frag-molecule" style="aspect-ratio:460/285" role="img" aria-label="Current molecule after actions a1 and a4; dashed blue additions are available actions a2 and a5."><svg viewBox="60 55 460 285" aria-hidden="true"><line x1="195.1495934585403" y1="198.88701492261376" x2="192.5495934585403" y2="221.24701492261374" stroke="#b7cbea" stroke-width="1.2"/><line x1="410.3922170372458" y1="197.82387559483894" x2="410.3922170372458" y2="220.18387559483892" stroke="#b7cbea" stroke-width="1.2"/><path class="bond-0 atom-0 atom-1" d="M 242.2,179.1 L 257.3,134.9" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-0 atom-0 atom-1" d="M 250.1,177.5 L 262.6,141.0" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-1 atom-1 atom-2" d="M 257.3,134.9 L 303.1,125.8" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-2 atom-2 atom-3" d="M 303.1,125.8 L 333.8,161.0" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-2 atom-2 atom-3" d="M 300.5,133.5 L 325.9,162.5" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-3 atom-3 atom-4" d="M 333.8,161.0 L 379.6,151.9" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-4 atom-3 atom-5" d="M 333.8,161.0 L 318.8,205.2" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-5 atom-5 atom-6" d="M 318.8,205.2 L 273.0,214.2" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-5 atom-5 atom-6" d="M 313.4,199.1 L 275.6,206.6" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="bond-6 atom-6 atom-0" d="M 273.0,214.2 L 242.2,179.1" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path d="M 243.0,176.9 L 242.2,179.1 L 243.7,180.8" style="fill:none;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;" />
+<path d="M 256.5,137.1 L 257.3,134.9 L 259.6,134.4" style="fill:none;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;" />
+<path d="M 300.8,126.3 L 303.1,125.8 L 304.6,127.6" style="fill:none;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;" />
+<path d="M 319.5,203.0 L 318.8,205.2 L 316.5,205.6" style="fill:none;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;" />
+<path d="M 275.2,213.8 L 273.0,214.2 L 271.4,212.5" style="fill:none;stroke:#000000;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-opacity:1;" />
+<path stroke-dasharray="5 5" class="bond-0 atom-0 atom-1" d="M 209.0,186.4 L 227.8,182.7" style="fill:none;fill-rule:evenodd;stroke:#50729f;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path stroke-dasharray="5 5" class="bond-0 atom-0 atom-1" d="M 227.8,182.7 L 246.6,178.9" style="fill:none;fill-rule:evenodd;stroke:#50729f;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path stroke-dasharray="5 5" class="bond-5 atom-5 atom-6" d="M 382.1,152.2 L 412.4,186.8" style="fill:none;fill-rule:evenodd;stroke:#50729f;stroke-width:2.0px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+<path class="atom-0" d="M 195.5 187.9 Q 195.5 184.8, 197.0 183.0 Q 198.6 181.3, 201.5 181.3 Q 204.4 181.3, 205.9 183.0 Q 207.5 184.8, 207.5 187.9 Q 207.5 191.1, 205.9 192.9 Q 204.3 194.7, 201.5 194.7 Q 198.6 194.7, 197.0 192.9 Q 195.5 191.1, 195.5 187.9 M 201.5 193.2 Q 203.5 193.2, 204.5 191.9 Q 205.6 190.5, 205.6 187.9 Q 205.6 185.3, 204.5 184.1 Q 203.5 182.7, 201.5 182.7 Q 199.5 182.7, 198.4 184.0 Q 197.3 185.3, 197.3 187.9 Q 197.3 190.5, 198.4 191.9 Q 199.5 193.2, 201.5 193.2 " fill="#50729f" />
+<circle cx="410.3922170372458" cy="187.07387559483894" r="3.5" fill="#50729f"/></svg><span class="frag-molecule-label " style="left:28.565%;top:61.802%" data-tex="a_2"></span><span class="frag-molecule-label frag-molecule-rate" style="left:28.565%;top:72.329%" data-tex="\bar u_{1/2}(a_2\mid s_t,s_I,s_F)=\frac{2}{1-1/2}=4"></span><span class="frag-molecule-label " style="left:76.172%;top:61.429%" data-tex="a_5"></span><span class="frag-molecule-label frag-molecule-rate" style="left:76.172%;top:71.956%" data-tex="\bar u_{1/2}(a_5\mid s_t,s_I,s_F)=\frac{3}{1-1/2}=6"></span></div></div><div><div class="small-heading">Remaining dependencies <span class="" data-tex="\alpha(s_t,s_F)"></span></div><div class="frag-action-tree" style="height:270px"><svg viewBox="0 0 440 270" preserveAspectRatio="none" aria-hidden="true"><defs><marker id="frag-arrow-1" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 1 L 7 4 L 0 7" fill="none" stroke="#c8cdd5" stroke-width="1.3"/></marker></defs><path d="M 105 62 L 105 105" fill="none" stroke="#c8cdd5" stroke-width="1.4" marker-end="url(#frag-arrow-1)"/><path d="M 335 62 L 335 105" fill="none" stroke="#c8cdd5" stroke-width="1.4" marker-end="url(#frag-arrow-1)"/><path d="M 335 157 L 335 200" fill="none" stroke="#c8cdd5" stroke-width="1.4" marker-end="url(#frag-arrow-1)"/></svg><div class="frag-action-node frag-available" style="left:23.8636%;top:37px"><span class="" data-tex="a_2"></span><span class="frag-action-name">AddAtom(O)</span></div><div class="frag-action-node frag-blocked" style="left:23.8636%;top:132px"><span class="" data-tex="a_3"></span><span class="frag-action-name">AddAtom(C)</span></div><div class="frag-action-node frag-available" style="left:76.1364%;top:37px"><span class="" data-tex="a_5"></span><span class="frag-action-name">AddAtom(C)</span></div><div class="frag-action-node frag-blocked" style="left:76.1364%;top:132px"><span class="" data-tex="a_6"></span><span class="frag-action-name">AddAtom(N)</span></div><div class="frag-action-node frag-blocked" style="left:76.1364%;top:227px"><span class="" data-tex="a_7"></span><span class="frag-action-name">AddFrag(morpholine)</span></div></div><div class="frag-forest-key"><span>Available</span><span>Prerequisites missing</span></div></div></div>
+</figure>
+<p>This connects two familiar extremes. With no dependencies, the forest has no edges: every remaining action is available and receives equal rate, recovering supervision on all actions as in factorized flows. With chain-like dependencies, only the next action receives positive target rate, resembling supervision in fixed-order autoregressive generation. Trajectory matching with general tree-like dependencies lies between these extremes, allowing some actions to occur in either order while enforcing prerequisites for others.</p>
+<figure class="blog-figure" id="v13" aria-label="Trajectory matching includes factorized flow matching, partial dependencies, and full dependencies"><div class="tm-scope">
+      <span class="scope-label tm-label">Trajectory Matching</span>
+      <div class="dependency-columns">
+        <div class="dependency-panel factorized-scope">
+          <span class="scope-label factorized-label">Factorized Flow Matching</span>
+          <h2 class="panel-title">Independent actions</h2>
+          <p class="order-label">Any order</p>
+          <div class="dependency-graph" role="img" aria-label="Four independent actions; all are available.">
+            <svg viewBox="0 0 285 150" aria-hidden="true"><defs><marker id="dependency-arrow-0" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1 L7 4 L0 7" fill="none" stroke="#c8cdd5" stroke-width="1.3"/></marker></defs><g fill="none" stroke="#c8cdd5" stroke-width="1.4" marker-end="url(#dependency-arrow-0)"></g></svg>
+            <span class="action-node available" style="left:31.9298%;top:30.0000%" data-tex="a_1"></span>
+            <span class="action-node available" style="left:68.0702%;top:30.0000%" data-tex="a_2"></span>
+            <span class="action-node available" style="left:31.9298%;top:74.6667%" data-tex="a_3"></span>
+            <span class="action-node available" style="left:68.0702%;top:74.6667%" data-tex="a_4"></span>
+          </div>
+          <div class="rate-label">Target rate</div>
+          <div class="rate-grid" role="img" aria-label="Target rates: all four actions have equal positive rates">
+            <span class="rate-action" data-tex="a_1"></span><div class="rate-cell"><span class="rate-track"><span class="rate-fill" style="width:25%"></span></span></div>
+            <span class="rate-action" data-tex="a_2"></span><div class="rate-cell"><span class="rate-track"><span class="rate-fill" style="width:25%"></span></span></div>
+            <span class="rate-action" data-tex="a_3"></span><div class="rate-cell"><span class="rate-track"><span class="rate-fill" style="width:25%"></span></span></div>
+            <span class="rate-action" data-tex="a_4"></span><div class="rate-cell"><span class="rate-track"><span class="rate-fill" style="width:25%"></span></span></div>
+          </div>
+        </div>
+        <div class="dependency-panel">
+          <h2 class="panel-title">Partial dependencies</h2>
+          <p class="order-label">Any valid order</p>
+          <div class="dependency-graph" role="img" aria-label="Action a1 precedes a2 and a3. Actions a1 and a4 are available.">
+            <svg viewBox="0 0 285 150" aria-hidden="true"><defs><marker id="dependency-arrow-1" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1 L7 4 L0 7" fill="none" stroke="#c8cdd5" stroke-width="1.3"/></marker></defs><g fill="none" stroke="#c8cdd5" stroke-width="1.4" marker-end="url(#dependency-arrow-1)"><path d="M99.29 57.00 L70.71 97.00"/><path d="M120.71 57.00 L149.29 97.00"/></g></svg>
+            <span class="action-node available" style="left:38.5965%;top:28.0000%" data-tex="a_1"></span>
+            <span class="action-node" style="left:21.0526%;top:74.6667%" data-tex="a_2"></span>
+            <span class="action-node" style="left:56.1404%;top:74.6667%" data-tex="a_3"></span>
+            <span class="action-node available" style="left:80.7018%;top:28.0000%" data-tex="a_4"></span>
+          </div>
+          <div class="rate-label">Target rate</div>
+          <div class="rate-grid" role="img" aria-label="Target rates: a1 has a larger positive rate than a4; a2 and a3 have zero rate">
+            <span class="rate-action" data-tex="a_1"></span><div class="rate-cell"><span class="rate-track"><span class="rate-fill" style="width:75%"></span></span></div>
+            <span class="rate-action" data-tex="a_2"></span><div class="rate-cell zero"><span class="rate-track"><span class="rate-fill" style="width:0%"></span></span></div>
+            <span class="rate-action" data-tex="a_3"></span><div class="rate-cell zero"><span class="rate-track"><span class="rate-fill" style="width:0%"></span></span></div>
+            <span class="rate-action" data-tex="a_4"></span><div class="rate-cell"><span class="rate-track"><span class="rate-fill" style="width:25%"></span></span></div>
+          </div>
+        </div>
+        <div class="dependency-panel">
+          <h2 class="panel-title">Full dependencies</h2>
+          <p class="order-label">One order</p>
+          <div class="dependency-graph" role="img" aria-label="Actions a1 to a4 form a chain. Only a1 is available.">
+            <svg viewBox="0 0 285 150" aria-hidden="true"><defs><marker id="dependency-arrow-2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 1 L7 4 L0 7" fill="none" stroke="#c8cdd5" stroke-width="1.3"/></marker></defs><g fill="none" stroke="#c8cdd5" stroke-width="1.4" marker-end="url(#dependency-arrow-2)"><path d="M65.38 80.00 L87.62 80.00"/><path d="M130.38 80.00 L152.62 80.00"/><path d="M195.38 80.00 L217.62 80.00"/></g></svg>
+            <span class="action-node available" style="left:15.4386%;top:53.3333%" data-tex="a_1"></span>
+            <span class="action-node" style="left:38.2456%;top:53.3333%" data-tex="a_2"></span>
+            <span class="action-node" style="left:61.0526%;top:53.3333%" data-tex="a_3"></span>
+            <span class="action-node" style="left:83.8596%;top:53.3333%" data-tex="a_4"></span>
+          </div>
+          <div class="rate-label">Target rate</div>
+          <div class="rate-grid" role="img" aria-label="Target rates: only a1 has a positive rate">
+            <span class="rate-action" data-tex="a_1"></span><div class="rate-cell"><span class="rate-track"><span class="rate-fill" style="width:100%"></span></span></div>
+            <span class="rate-action" data-tex="a_2"></span><div class="rate-cell zero"><span class="rate-track"><span class="rate-fill" style="width:0%"></span></span></div>
+            <span class="rate-action" data-tex="a_3"></span><div class="rate-cell zero"><span class="rate-track"><span class="rate-fill" style="width:0%"></span></span></div>
+            <span class="rate-action" data-tex="a_4"></span><div class="rate-cell zero"><span class="rate-track"><span class="rate-fill" style="width:0%"></span></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+</figure>
+<p>Our paper explores even more constructions, including more general dependencies and trajectory distributions in which different sequences connecting the same endpoints can use different sets of actions.</p>
+<p>Trajectory matching brings these choices into a common framework: which actions to use, and how they can be ordered. Independent component edits recover factorized flows, while structured actions, potentially with prerequisites, extend the same training principle to richer generation processes.</p>
+<p>This has been my favorite project of my PhD so far, and I would be very happy to <a href="mailto:niklas.kemper@tum.de">hear from you</a> if you have questions, thoughts, or feedback on the work or on this (my first!) blog post.</p>
+<details class="related-work" id="selected-references">
+  <summary>Selected references and related work</summary>
+  <div class="related-work-content">
+    <h3>Discrete flow matching</h3>
+    <p>This work builds on <a href="https://arxiv.org/abs/2407.15595">Discrete Flow Matching</a> (Gat et al., 2024) and <a href="https://arxiv.org/abs/2402.04997">Generative Flows on Discrete State-Spaces</a> (Campbell et al., 2024), which develop flow-based generation on discrete spaces using continuous-time Markov chains. <a href="https://arxiv.org/abs/2410.04263">DeFoG: Discrete Flow Matching for Graph Generation</a> (Qin et al., 2025) brings this approach to graphs and provides the basis for our factorized graph baseline.</p>
+    <p><a href="https://arxiv.org/abs/2410.20587">Generator Matching</a> (Holderrieth et al., 2024) provides a broader framework for learning generative Markov processes from conditional generators. Trajectory matching fits within this framework: we construct tractable conditional rates by conditioning on a valid action trajectory.</p>
+
+    <h3>Edit Flows and extensions to other domains</h3>
+    <p><a href="https://arxiv.org/abs/2506.09018">Edit Flows: Flow Matching with Edit Operations</a> (Havasi et al., 2025) is particularly close to our work. It supports variable-length sequences, but its actions are restricted to inserting, deleting, or substituting a single token in a sequence. Its training construction introduces an auxiliary alignment space in which the conditional process factorizes again across positions, with each edit changing one component of this augmented representation. This accommodates changes in sequence length, but does not support joint actions such as attaching an entire molecular fragment or prerequisites of actions.
+      Interestingly, trajectory matching recovers this construction’s probability path and marginal rates by uniformly ordering the alignment-compatible edits.</p>
+    <p>Edit-based flows have since been adapted to <a href="https://arxiv.org/abs/2510.06050">temporal point processes</a>, <a href="https://arxiv.org/abs/2603.11703">protein sequences</a>, and <a href="https://arxiv.org/abs/2510.03506">joint text–image generation</a>. Particularly relevant here is <a href="https://arxiv.org/abs/2511.09465">Branching Flows</a> (Billera et al., 2026), which extends EditFlows to 3D molecule generation. It uses split and delete actions organized by a latent forest that specifies the ancestry of the generated elements, providing a connection to the action dependencies discussed above.</p>
+    <p>See <a href="https://niklaskemper.com/assets/papers/trajectory-matching-preprint.pdf">our paper</a> for the full related-work discussion and technical comparisons.</p>
+  </div>
+</details>
+</article></main>
+</body></html>
+{% endraw %}

@@ -1,0 +1,235 @@
+:root { color-scheme:light; --ink:#17191d; --muted:#72767d; --line:#e5e7eb; --blue:#b7cbea; --blue-ink:#50729f; }
+/* A standalone overview of trajectory matching's scope. */
+.dependency-spectrum { width:100%;max-width:1080px;margin:12px auto; }
+.dependency-spectrum>svg { width:100%;height:auto; }
+/* 11–12: one molecule, its action tree, and its remaining-action forest. */
+.frag-layout { display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:26px;max-width:1000px;margin:24px auto 12px;align-items:stretch; }
+.frag-layout>div { display:flex;flex-direction:column; }
+.frag-layout .small-heading { text-align:center;font-size:13px;font-weight:500;line-height:28px;min-height:28px;margin:0; }
+.frag-molecule-column .frag-molecule { margin:auto 0; }
+.frag-molecule { position:relative;width:100%;margin:18px auto; }
+.frag-molecule>svg { width:100%;height:100%; }
+.frag-molecule-label { position:absolute;transform:translate(-50%,-50%);font-size:15px;color:var(--blue-ink);line-height:1;background:white;padding:1px 3px; }
+.frag-molecule-label.frag-seed-label { color:var(--ink);font-size:18px; }
+.frag-small-note { font-size:11px;color:var(--muted);text-align:center; }
+.frag-blue { color:var(--blue-ink); }
+.frag-action-tree { position:relative;width:100%;max-width:440px;margin:16px auto 0; }
+.frag-action-tree>svg { position:absolute;width:100%;height:100%;inset:0; }
+.frag-action-node { position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;width:154px;height:50px;background:white;border:1px solid var(--line);border-radius:5px; }
+.frag-action-node>span:first-child { color:var(--blue-ink);font-size:14px; }
+.frag-action-name { font-size:11px;white-space:nowrap;line-height:1.3; }
+.frag-action-node.frag-available { border-color:var(--blue-ink);background:#f7f9fc; }
+.frag-action-node.frag-available .frag-action-name { color:var(--blue-ink); }
+.frag-molecule-label.frag-molecule-rate { font-size:clamp(11px,2.9vw,15px);white-space:nowrap; }
+#v12 .frag-layout { grid-template-columns:minmax(0,1.8fr) minmax(0,1fr);max-width:1100px;gap:36px; }
+.frag-action-node.frag-blocked,.frag-action-node.frag-blocked>span:first-child { color:#9299a3; }
+.frag-forest-key { display:flex;justify-content:center;gap:22px;font-size:11px;color:#9299a3; }
+.frag-forest-key>span:first-child { color:var(--blue-ink); }
+.frag-rate-equations { display:flex;justify-content:center;gap:26px 45px;flex-wrap:wrap;margin:28px auto 15px;font-size:14px;color:var(--blue-ink); }
+@media(max-width:850px) { .frag-layout{grid-template-columns:1fr;gap:20px;max-width:540px;}.frag-molecule{max-width:520px;}.frag-rate-equations{flex-direction:column;align-items:center;gap:15px;} }
+@media(max-width:1000px) { #v12 .frag-layout{grid-template-columns:1fr;max-width:700px;gap:20px;} #v12 .frag-molecule{max-width:none;} #v12 .frag-molecule-label.frag-molecule-rate{font-size:clamp(9px,2.15vw,15px);} }
+@media(max-width:420px) { .frag-action-node{width:135px;}.frag-action-name{font-size:10px;}.frag-rate-equations{font-size:12px;}.frag-molecule-label{font-size:13px;} }
+/* Recorded molecular samples: name, crisp animation, action vocabulary. */
+.action-spaces-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:30px 38px;max-width:980px;margin:10px auto 0; }
+.action-space-panel h3 { font-size:16px;font-weight:500;text-align:center;margin:0 0 4px; }
+.molecular-stage { aspect-ratio:2;position:relative; }
+.molecular-frame { position:absolute;inset:0;opacity:0;transition:opacity 140ms ease; }
+.molecular-frame svg { width:100%;height:100%; }
+.molecular-halo { animation:molecular-highlight 950ms ease-out forwards; }
+@keyframes molecular-highlight { 0%,35%{opacity:.85}100%{opacity:0} }
+.molecular-paused .molecular-halo { animation-play-state:paused; }
+.molecular-actions { min-height:42px;text-align:center;font-size:11px;line-height:1.9;color:var(--blue-ink); }
+.molecular-actions>div { display:flex;justify-content:center;gap:15px;flex-wrap:wrap; }
+.molecular-actions span { opacity:.67;transition:opacity 140ms; }
+.molecular-actions .current-action { opacity:1;text-decoration:underline;text-underline-offset:4px; }
+.molecular-controls { justify-content:center; }
+#action-spaces-progress,#conditioned-progress { width:150px;height:16px;accent-color:var(--blue-ink);cursor:pointer;margin-left:10px; }
+.conditioned-examples { max-width:900px;margin:auto; }
+.conditioned-example h3 { font-size:15px;font-weight:500;margin:8px 0 0; }
+.conditioned-reaction { display:grid;grid-template-columns:minmax(0,0.65fr) 44px minmax(0,1.35fr);gap:16px;align-items:center; }
+.conditioned-source { width:100%;max-width:250px;margin:auto; }
+.conditioned-source svg { width:100%;aspect-ratio:2; }
+.conditioned-arrow { color:var(--blue-ink);text-align:center;font-size:26px;font-weight:300; }
+.conditioned-example+.conditioned-example { margin-top:10px; }
+.conditioned-key { display:flex;align-items:center;justify-content:center;gap:7px;font-size:11px;color:var(--muted);margin-top:6px; }
+.conditioned-key span { width:23px;height:7px;border-radius:4px;background:var(--blue); }
+@media(max-width:600px) { .conditioned-reaction{grid-template-columns:minmax(0,.65fr) 22px minmax(0,1.35fr);gap:4px;}.conditioned-arrow{font-size:22px;}.conditioned-example h3{font-size:14px;}.conditioned-example+.conditioned-example{margin-top:24px;} }
+@media(max-width:420px) { .conditioned-reaction{grid-template-columns:1fr;gap:0;}.conditioned-source{max-width:160px;}.conditioned-arrow{transform:rotate(90deg);line-height:24px;}.conditioned-example h3{text-align:center;margin-bottom:8px;} }
+@media(max-width:600px) { .action-spaces-grid{grid-template-columns:1fr;gap:24px;max-width:480px;}.molecular-actions{min-height:0;} }
+@media(prefers-reduced-motion:reduce) { .molecular-frame{transition:none;}.molecular-halo{animation:none;} }
+* { box-sizing:border-box; }
+body { margin:0; background:white; color:var(--ink); font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+header,main { max-width:1160px; margin:auto; padding:0 30px; }
+header { padding-top:36px; }
+h1 { font-size:28px; font-weight:500; margin:4px 0 22px; }
+h2 { font-size:19px; font-weight:500; margin:0; }
+.eyebrow { font-size:11px; letter-spacing:.12em; color:var(--muted); }
+nav { display:flex; gap:12px 24px; flex-wrap:wrap; padding-bottom:24px; }
+nav a { color:var(--muted); font-size:13px; text-decoration:none; }
+nav a:hover { color:var(--ink); text-decoration:underline; }
+section { border-top:1px solid var(--line); padding:28px 0 34px; scroll-margin-top:18px; }
+.section-heading { display:flex; gap:18px; align-items:center; margin-bottom:18px; }
+.section-heading>span { font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.two { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+svg,canvas { display:block; width:100%; height:auto; }
+#opener button { padding:0; border:0; border-radius:0; background:none; width:100%; }
+.controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:14px 0; }
+button,select { font:inherit; font-size:13px; color:var(--ink); background:white; border:1px solid #d4d8de; border-radius:5px; padding:7px 12px; cursor:pointer; }
+button:hover,select:hover { border-color:var(--blue-ink); }
+button:focus-visible,select:focus-visible,#flow-timeline:focus-visible { outline:2px solid var(--blue-ink); outline-offset:3px; }
+.reaction-list { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:30px;max-width:940px;margin:auto; }
+.reaction { display:grid; grid-template-columns:minmax(0,1fr) 112px minmax(0,1fr); align-items:center; }
+.reaction svg { aspect-ratio:340/220; }
+.action-arrow { min-width:20px; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--blue-ink); }
+.action-arrow .arrow-label { font-size:12px; white-space:nowrap; margin-bottom:7px; }
+.action-arrow .shaft { width:100%; border-top:1px solid currentColor; position:relative; }
+.action-arrow .shaft::after { content:''; width:6px;height:6px; border-top:1px solid currentColor; border-right:1px solid currentColor; transform:rotate(45deg); position:absolute; right:0; top:-4px; }
+.reaction .action-arrow { padding:0 8px; }.reaction .arrow-label{font-size:9px;}
+.trajectory-strip { display:flex; align-items:center; gap:8px; margin:16px 0; overflow-x:auto; padding:12px 0; }
+.state { flex:1 1 0; min-width:105px; margin:0; }
+.trajectory-strip>.action-arrow { flex:0 0 17px; }
+.trajectory-strip .arrow-label { font-size:10px; }
+.molecule-routes { overflow-x:auto;max-width:760px;margin:auto; }
+#fragment-trajectory,#atom-trajectory { display:grid; grid-template-columns:repeat(4,minmax(55px,1fr) 60px) minmax(55px,1fr); gap:0; min-width:560px; align-items:center; padding:16px 0; margin:0; overflow:visible; }
+.molecule-routes .state { min-width:0; }
+#fragment-trajectory .state:first-child { grid-column:1; }
+#fragment-trajectory .state:last-child { grid-column:9; }
+#fragment-trajectory>.action-arrow { grid-column:2 / 9; }
+#atom-trajectory>.action-arrow { margin:0 4px; }
+#atom-trajectory .arrow-label { font-size:10px; }
+.dependency-row { width:min(100%,400px); margin:auto; }
+.availability-key { display:flex;justify-content:center;gap:26px;font-size:12px; }
+.availability-key span::before { content:'';display:inline-block;width:23px;border-top:2px dashed currentColor;margin:0 7px 3px 0; }
+.available { color:var(--blue-ink); }
+.blocked { color:#8b929d; }
+.rate-note { text-align:center;color:var(--muted);font-size:12px;margin:0 0 8px; }
+figcaption { font-size:12px; text-align:center; color:var(--muted); margin-top:4px; }
+#tree-trajectory { margin-top:12px; }
+#flow-timeline { height:144px; margin:8px auto 0; touch-action:none; cursor:ew-resize; user-select:none; }
+#flow-tree { width:min(100%,420px); margin:0 auto; }
+#v6 .controls { justify-content:center; }
+@media(max-width:700px) { .reaction-list{grid-template-columns:1fr;max-width:440px;gap:12px;} header,main { padding-left:18px;padding-right:18px; } .reaction { grid-template-columns:minmax(0,1fr) 120px minmax(0,1fr); } .reaction .action-arrow { padding:0 6px; } .reaction .arrow-label { font-size:10px; } h2 { font-size:17px; } }
+@media(max-width:460px) { .two { grid-template-columns:1fr; } .reaction { grid-template-columns:minmax(0,1fr) 90px minmax(0,1fr); } .reaction .arrow-label { max-width:88px;white-space:normal;text-align:center; } }
+
+/* 7–8: the same sparse diagrams, with compact action-rate comparisons. */
+.figure-topline { display:flex;align-items:center;justify-content:space-between;gap:16px;color:var(--muted);font-size:12px;margin:14px 0; }
+.small-heading { font-size:13px;font-weight:500;margin-bottom:6px; }
+.small-detail { font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums; }
+.training-selection { display:flex;flex-direction:column;align-items:center;gap:3px;margin:8px 0 30px;color:var(--muted);font-size:12px; }
+.training-setup { display:flex;align-items:flex-start;justify-content:space-between;gap:24px;max-width:940px;margin:20px auto 8px; }
+#v7 .training-steps { margin:0;padding-left:22px;font-size:13px;line-height:1.8;min-width:0; }
+#v7 .training-steps li { padding-left:3px;margin:0 0 8px; }
+.training-steps li>span:first-child { margin-right:10px; }
+.training-steps #training-draw { display:inline-flex;flex-wrap:wrap;gap:6px 18px;font-size:13px; }
+.training-setup>button { flex-shrink:0; }
+#training-trajectory>.action-arrow { color:#a7adb6;position:relative; }
+#v7 { --action-accent:#ad5932; }
+#v7 #training-draw .sample-distribution { color:var(--ink); }
+.training-comparison-heading { display:flex;align-items:center;justify-content:space-between;gap:16px;max-width:940px;margin:24px auto 24px;padding-top:20px;border-top:1px solid var(--line);font-size:13px; }
+#v7 .training-comparison-heading .training-steps li { margin:0; }
+#v7 .state-input .small-heading,#training-time { color:var(--blue-ink); }
+#v7 .model-box { color:var(--blue-ink);border-color:var(--blue-ink);background:#f7f9fc; }
+#v7 .bridge-line,#v7 .bridge-line::after { border-color:var(--blue-ink); }
+#training-rates .rate-action { color:var(--muted); }
+#training-rates .target-heading { color:var(--action-accent); }
+#training-trajectory .training-state-label { min-height:20px;line-height:20px;margin-top:5px;color:var(--muted); }
+#training-trajectory .chosen .training-state-label { color:var(--blue-ink); }
+@media(max-width:750px) { .training-comparison-heading{align-items:flex-start;flex-direction:column;gap:10px;} }
+#training-trajectory>.training-next-action { color:var(--action-accent);flex:0 0 80px;min-width:80px; }
+#training-trajectory>.training-next-action .shaft { border-top-width:2px; }
+#training-trajectory .training-next-action .arrow-label { position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:11px;white-space:nowrap;margin:0;padding:4px 5px; }
+#training-rates .next-target { color:var(--action-accent); }
+#training-rates .next-target .target-fill { background:var(--action-accent);box-shadow:none; }
+@media(max-width:750px) { .training-setup{flex-direction:column;gap:12px;}.training-setup>button{align-self:flex-end;order:-1;}.training-steps li>span:first-child{display:block;} }
+#training-trajectory .state { border:1px solid transparent;border-radius:5px; }
+#v7 .labeled-trajectory { max-width:940px;margin:0 auto; }
+#training-trajectory .state { min-width:80px; }
+#training-trajectory .state>svg { height:100px; }
+#training-trajectory>.action-arrow { margin-bottom:25px; }
+#v7 .trajectory-symbol { transform:translateY(-12.5px); }
+#training-trajectory .chosen { border-color:var(--blue-ink);background:#f7f9fc; }
+.training-layout { display:grid;grid-template-columns:minmax(180px,1fr) 160px minmax(280px,1.35fr);align-items:start;gap:20px;max-width:940px;margin:auto; }
+.training-layout>.model-bridge { align-self:center; }
+.training-layout>.rates-panel { align-self:start; }
+.state-input { text-align:center; }
+#training-state { max-width:300px;margin:auto; }
+.model-bridge { display:flex;align-items:center;gap:8px; }
+.model-box { border:1px solid var(--line);border-radius:5px;padding:10px 15px;font-size:13px; }
+.bridge-line { flex:1;border-top:1px solid #929aa4;position:relative; }
+.bridge-line:last-child::after { content:'';position:absolute;right:0;top:-4px;width:6px;height:6px;border-top:1px solid #929aa4;border-right:1px solid #929aa4;transform:rotate(45deg); }
+.rates-panel { align-self:center; }
+.draft-note { color:var(--muted);font-size:11px;text-align:center;margin:18px 0 0; }
+#training-rates { width:100%; }
+.generation-layout { display:grid;grid-template-columns:minmax(180px,1fr) minmax(240px,1fr) 36px minmax(180px,1fr);align-items:start;gap:18px;min-height:320px; }
+.generation-layout>.rates-panel { padding:0 4px;align-self:start; }
+.generation-layout .small-heading { text-align:center; }
+.generation-layout svg { height:290px;min-height:0;object-fit:contain; }
+.generation-arrow { align-self:center;text-align:center;color:var(--blue-ink);font-size:12px; }
+.generation-arrow span { display:block; }
+.generation-arrow span:last-child { font-size:26px; }
+.generation-controls { justify-content:center; }
+#generation-progress { height:2px;background:var(--line);margin:20px 0 26px; }
+#generation-progress span { display:block;height:100%;background:var(--blue-ink); }
+#generation-selection { text-align:center;min-height:20px;color:var(--blue-ink); }
+@media(max-width:800px) { .training-layout { grid-template-columns:minmax(160px,1fr) 100px minmax(230px,1fr);gap:8px; }.model-box{padding:8px;} .generation-layout {grid-template-columns:minmax(150px,1fr) minmax(210px,1fr);gap:20px;}.generation-arrow{display:none;}.generation-layout>div:last-child{grid-column:1 / -1;max-width:320px;width:100%;margin:auto;} }
+@media(max-width:560px) { .training-layout {grid-template-columns:1fr;}.model-bridge {max-width:180px;width:100%;margin:4px auto 18px;}.training-layout .rates-panel{max-width:360px;width:100%;margin:auto;}.generation-layout {grid-template-columns:1fr;}.generation-layout>div{width:100%;max-width:350px;margin:auto;}.figure-topline{align-items:flex-start;} }
+
+.generation-layout.complete>div:not(:last-child) { display:none; }
+.generation-layout.complete>div:last-child { grid-column:1 / -1;width:min(100%,360px);margin:auto; }
+button:disabled { opacity:.4;cursor:default; }
+
+.target-summary { font-size:12px;line-height:1.6;color:var(--ink);margin:0 0 16px;max-width:390px; }
+
+.katex { font-size:1.05em; }
+.svg-math .katex { font-size:1.05em; }
+.target-zero { display:block;font-size:11px;color:var(--muted);margin-top:9px; }
+.target-summary { min-height:42px; }
+
+/* Compact labels shared by the timing and ordering views. */
+.trajectory-distribution { margin-right:auto;font-size:13px; }
+.trajectory-label { margin:4px 0 -8px; }
+#flow-trajectory .state { border:1px solid transparent;border-radius:5px; }
+#flow-trajectory .chosen { border-color:var(--blue-ink);background:#f7f9fc; }
+#training-draw { display:flex;align-items:center;gap:28px;font-size:13px; }
+.sample-time { color:var(--ink); }
+.sample-distribution { color:var(--blue-ink); }
+.target-summary { text-align:center;margin:10px auto 0;padding-top:12px;border-top:1px solid var(--line);font-size:11px; }
+.target-zero { margin-top:6px; }
+@media(max-width:460px) { #training-draw{flex-wrap:wrap;justify-content:center;gap:8px 18px;} }
+
+/* Rate comparisons use native layout so labels, bars, and math stay aligned. */
+.rate-grid { display:grid;grid-template-columns:94px minmax(0,1fr);gap:12px 10px;align-items:center;font-size:12px; }
+.rate-grid.paired { grid-template-columns:96px repeat(2,minmax(0,1fr)); }
+.rate-heading { text-align:center;color:var(--blue-ink);white-space:nowrap;font-size:11px; }
+.rate-action { color:var(--blue-ink);white-space:nowrap; }
+.rate-cell { display:flex;align-items:center;gap:7px;min-width:0;min-height:22px; }
+.rate-track { display:block;flex:1;height:8px;border-radius:3px;background:#edf0f4;overflow:hidden; }
+.rate-fill { display:block;height:100%;border-radius:2px;background:var(--blue-ink); }
+.target-fill { background:var(--blue);box-shadow:inset 0 0 0 1.3px var(--blue-ink); }
+.rate-number { width:32px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums; }
+.rate-check { width:14px;color:var(--blue-ink); }
+.loss-comparison { grid-column:2 / -1;display:flex;flex-direction:column;align-items:center; }
+.loss-comparison svg { width:100%;height:40px; }
+.loss-box { display:flex;align-items:center;justify-content:center;min-height:36px;padding:6px 16px;border:1px solid var(--line);border-radius:4px;white-space:nowrap; }
+.generation-rate-stage { height:290px;display:flex;align-items:center; }
+#generation-rates { width:100%; }
+
+.flow-diagram { width:min(100%,420px);margin:auto;position:relative; }
+#flow-tree { width:100%; }
+#flow-rate-label { position:absolute;white-space:nowrap;color:var(--blue-ink);font-size:13px;pointer-events:none; }
+
+/* A trajectory is a displayed mathematical object, with its symbol in front. */
+.labeled-trajectory { display:flex;align-items:center;gap:18px; }
+.trajectory-symbol { flex:0 0 auto;font-size:22px;color:var(--ink); }
+.labeled-trajectory>.trajectory-strip { flex:1;min-width:0; }
+.labeled-trajectory .state { min-width:90px; }
+.training-sampling { margin-bottom:0; }
+.rate-heading { display:flex;flex-direction:column;justify-content:flex-start;align-items:center;gap:3px;align-self:start; }
+.rate-heading>span:first-child { font:12px/18px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+.rate-heading>span:last-child { height:23px;display:flex;align-items:center; }
+.rate-grid.paired .rate-heading { padding-right:39px; }
+#v4 .dependency-row { width:min(100%,270px); }
+@media(max-width:650px) { .training-layout{grid-template-columns:1fr;}.training-layout .rates-panel{max-width:420px;width:100%;margin:auto;}.model-bridge{max-width:160px;width:100%;margin:4px auto 18px;}.labeled-trajectory{gap:10px;}.trajectory-symbol{font-size:21px;} }
+
+.flow-computation { text-align:center;font-size:15px;margin:0 auto 18px;overflow-x:auto;padding:6px 0; }
+@media(max-width:500px) { .flow-computation { font-size:12px; } }

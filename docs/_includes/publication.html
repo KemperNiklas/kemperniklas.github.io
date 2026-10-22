@@ -10,9 +10,9 @@
     {% if publication.note %}<p class="publication-note">{{ publication.note }}</p>{% endif %}
     <div class="publication-links">
       <a href="{{ publication.paper }}">Paper</a>
+      {% if publication.blog %}<a href="{{ publication.blog | relative_url }}">Blog post</a>{% endif %}
       {% if publication.project %}<a href="{{ publication.project }}">Project page</a>{% endif %}
       {% if publication.code %}<a href="{{ publication.code }}">Code</a>{% endif %}
     </div>
   </div>
 </li>
-
