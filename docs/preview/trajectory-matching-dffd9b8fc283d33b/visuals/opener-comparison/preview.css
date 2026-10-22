@@ -41,3 +41,20 @@ button:focus-visible,input:focus-visible,select:focus-visible { outline:2px soli
   .stage { height:150px; }
   .panel-title { font-size:11px; }
 }
+
+/* Comparison properties, aligned across both panels. */
+.tm-scope { padding-top:48px; }
+.panel-title { min-height:2.4em; }
+.comparison-notes { list-style:none; padding:14px 0 0; margin:12px 0 0; border-top:1px solid; font-size:13px; line-height:1.4; text-align:left; }
+.comparison-notes li { min-height:3em; display:grid; grid-template-columns:20px minmax(0,1fr); align-items:center; gap:8px; }
+.comparison-face { font-family:"Arial Unicode MS","Segoe UI Symbol",sans-serif; font-size:21px; line-height:1; }
+.structured-notes { color:var(--blue); border-color:var(--blue-line); }
+.factorized-notes { color:var(--amber); border-color:var(--amber-line); }
+@media(max-width:650px) {
+  .tm-scope { padding-top:44px; }
+  .comparison-notes { font-size:11px; }
+  .comparison-notes li { min-height:4.2em; }
+}
+@media(max-width:420px) {
+  .comparison-notes li { min-height:5.6em; overflow-wrap:anywhere; }
+}

@@ -36,8 +36,9 @@
 .related-work-content ul { margin:0 0 16px;padding-left:22px; }
 .related-work-content a,.article article>p a[href^="mailto:"] { color:var(--blue-ink);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px; }
 .blog #v1 { padding:0; border:0; }
-.opener-comparison iframe { display:block; width:100%; height:450px; border:0; }
-@media(max-width:650px) { .opener-comparison iframe { height:400px; } }
+.opener-comparison iframe { display:block; width:100%; height:620px; border:0; }
+.opener-comparison>figcaption { margin:12px 0 0; font-weight:400; }
+@media(max-width:650px) { .opener-comparison iframe { height:640px; } }
 .blog #v4 .dependency-row { max-width:270px; }
 .compact-figure { max-width:620px;margin-left:auto;margin-right:auto; }
 #results-growth { max-width:760px; }
