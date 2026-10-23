@@ -18,6 +18,11 @@
   font-family:var(--serif); font-size:1.25rem; line-height:1.5; color:var(--muted);
 }
 .research-post .article-byline { color:var(--muted); }
+.research-post .article-paper-credit {
+  margin:14px 0 0; color:var(--muted); font-size:13px; line-height:1.6;
+}
+.research-post .article-paper-credit p { margin:0; }
+.research-post .article-paper-credit .article-affiliations { margin-top:5px; }
 .research-post .article-links a {
   color:var(--accent); font-size:.88rem; font-weight:600;
   text-decoration:underline; text-decoration-thickness:1px;
