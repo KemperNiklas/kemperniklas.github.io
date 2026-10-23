@@ -1,38 +1,19 @@
 ---
-layout: null
+layout: research-post
 title: "Trajectory Matching: Discrete Flow Matching with Structured Actions"
 description: "How can we use structured actions in flow matching, such as inserting a whole molecular fragment?"
 excerpt: "How can we use structured actions in flow matching, such as inserting a whole molecular fragment?"
 author: Niklas Kemper
 date: 2026-10-22 00:00:00 +0200
+stylesheets: ["/blog/trajectory-matching/assets/katex/katex.min.css", "/blog/trajectory-matching/visuals/drafts-1-6/drafts.css", "/blog/trajectory-matching/blog.css", "/blog/trajectory-matching/visuals/dependency-spectrum/figure.css"]
+scripts: ["/blog/trajectory-matching/assets/katex/katex.min.js", "/blog/trajectory-matching/assets/math.js", "/blog/trajectory-matching/visuals/drafts-1-6/molecule-frames.js", "/blog/trajectory-matching/visuals/drafts-1-6/drafts.js", "/blog/trajectory-matching/visuals/drafts-1-6/action-space-frames.js", "/blog/trajectory-matching/visuals/drafts-1-6/action-spaces.js", "/blog/trajectory-matching/visuals/drafts-1-6/conditioned-frames.js", "/blog/trajectory-matching/visuals/drafts-1-6/conditioned.js", "/blog/trajectory-matching/visuals/drafts-1-6/hierarchy-frames.js", "/blog/trajectory-matching/visuals/drafts-1-6/hierarchy.js"]
 permalink: /blog/trajectory-matching/
+canonical_url: /blog/trajectory-matching/
+noindex: false
 ---
 {% raw %}
-<!doctype html>
-<html lang="en"><head>
-<meta name="description" content="How can we use structured actions in flow matching, such as inserting a whole molecular fragment?">
-<meta name="author" content="Niklas Kemper">
-<link rel="canonical" href="https://niklaskemper.com/blog/trajectory-matching/">
-<meta property="og:type" content="article">
-<meta property="og:title" content="Trajectory Matching: Discrete Flow Matching with Structured Actions">
-<meta property="og:description" content="How can we use structured actions in flow matching, such as inserting a whole molecular fragment?">
-<meta property="og:url" content="https://niklaskemper.com/blog/trajectory-matching/">
-<meta name="twitter:card" content="summary">
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Trajectory Matching — Discrete Flow Matching with Structured Actions</title>
-<link rel="stylesheet" href="assets/katex/katex.min.css">
-<link rel="stylesheet" href="visuals/drafts-1-6/drafts.css"><link rel="stylesheet" href="blog.css"><link rel="stylesheet" href="visuals/dependency-spectrum/figure.css">
-<script src="assets/katex/katex.min.js" defer></script><script src="assets/math.js" defer></script>
-<script src="visuals/drafts-1-6/molecule-frames.js" defer></script>
-<script src="visuals/drafts-1-6/drafts.js" defer></script>
-<script src="visuals/drafts-1-6/action-space-frames.js" defer></script>
-<script src="visuals/drafts-1-6/action-spaces.js" defer></script>
-<script src="visuals/drafts-1-6/conditioned-frames.js" defer></script>
-<script src="visuals/drafts-1-6/conditioned.js" defer></script>
-<script src="visuals/drafts-1-6/hierarchy-frames.js" defer></script>
-<script src="visuals/drafts-1-6/hierarchy.js" defer></script></head>
-<body class="blog"><header class="article-header"><p class="eyebrow"><a href="/blog/">← Blog</a></p><h1>Trajectory Matching</h1><p class="subtitle">Discrete flow matching with structured actions</p><p class="article-byline"><a href="/">Niklas Kemper</a> · <time datetime="2026-10-22">October 22, 2026</time></p><div class="article-links"><a href="https://niklaskemper.com/assets/papers/trajectory-matching-preprint.pdf">Paper ↗</a></div></header>
-<nav class="article-nav" aria-label="Article sections"><a href="#factorized-flows">Background</a><a href="#trajectory-matching">Method</a><a href="#empirical-results">Results</a><a href="#trajectory-matching-subsumes-factorized-flows">Theory</a></nav><main class="article"><article><p>Consider building a molecule: it seems more natural to grow it by attaching whole fragments to a partial structure than by changing individual atom and bond features in a fixed-size noisy graph. Yet most <span class="method-factorized">discrete flow matching methods</span> are restricted to such single-component edits on a fixed-size state. <strong><span class="method-trajectory">Trajectory matching</span> extends discrete flow matching to structured actions that can change the size of a state, modify several components together, and depend on earlier actions.</strong></p>
+<header class="article-header"><p class="eyebrow"><a href="/blog/">← Blog</a></p><h1>Trajectory Matching</h1><p class="subtitle">Discrete flow matching with structured actions</p><p class="article-byline"><a href="/">Niklas Kemper</a> · <time datetime="2026-10-22">October 22, 2026</time></p><div class="article-links"><a href="https://niklaskemper.com/assets/papers/trajectory-matching-preprint.pdf">Paper ↗</a></div></header>
+<nav class="article-nav" aria-label="Article sections"><a href="#factorized-flows">Background</a><a href="#trajectory-matching">Method</a><a href="#empirical-results">Results</a><a href="#trajectory-matching-subsumes-factorized-flows">Theory</a></nav><div class="article"><article><p>Consider building a molecule: it seems more natural to grow it by attaching whole fragments to a partial structure than by changing individual atom and bond features in a fixed-size noisy graph. Yet most <span class="method-factorized">discrete flow matching methods</span> are restricted to such single-component edits on a fixed-size state. <strong><span class="method-trajectory">Trajectory matching</span> extends discrete flow matching to structured actions that can change the size of a state, modify several components together, and depend on earlier actions.</strong></p>
 <figure class="blog-figure opener-comparison" id="v1" aria-labelledby="caption-v1"><iframe src="visuals/opener-comparison/index.html?embed" title="Compare structured actions and single-component edits in molecules or hierarchies"></iframe><figcaption id="caption-v1"><strong>Figure 1.</strong> Structured actions (left) and single-component edits (right) for molecule and hierarchy generation. Trajectory matching subsumes standard factorized flow matching while supporting general actions that may change the size of a state, affect multiple components, and depend on earlier actions.</figcaption></figure>
 <p>The key idea is to condition training not only on a source and target state but on a full <strong>trajectory</strong>: a valid sequence of actions connecting the two endpoints. The trajectory fixes which actions happen and in what order; we randomize only when they occur. This gives us tractable training targets even for structured actions with dependencies. Once trained, the model generates samples as in standard discrete flow matching, without needing a trajectory. We’ll illustrate these ideas in this post through molecular generation and hierarchy generation.</p>
 <p>To understand why trajectory conditioning helps, let’s first look at how standard discrete flow matching constructs its training targets.</p>
@@ -411,6 +392,5 @@ p_t(s_i\mid\tau)=\binom{n}{i}t^i(1-t)^{n-i}.</div>
     <p>See <a href="https://niklaskemper.com/assets/papers/trajectory-matching-preprint.pdf">our paper</a> for the full related-work discussion and technical comparisons.</p>
   </div>
 </details>
-</article></main>
-</body></html>
+</article></div>
 {% endraw %}

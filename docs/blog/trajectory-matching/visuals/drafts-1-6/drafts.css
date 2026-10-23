@@ -1,3 +1,4 @@
+@layer figure-base {
 :root { color-scheme:light; --ink:#17191d; --muted:#72767d; --line:#e5e7eb; --blue:#b7cbea; --blue-ink:#50729f; }
 /* A standalone overview of trajectory matching's scope. */
 .dependency-spectrum { width:100%;max-width:1080px;margin:12px auto; }
@@ -233,3 +234,5 @@ button:disabled { opacity:.4;cursor:default; }
 
 .flow-computation { text-align:center;font-size:15px;margin:0 auto 18px;overflow-x:auto;padding:6px 0; }
 @media(max-width:500px) { .flow-computation { font-size:12px; } }
+
+}

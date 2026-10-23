@@ -1,0 +1,4 @@
+/* Embedded figures use the same surface as the public research post. */
+:root { --paper:#f7f6f2; }
+html,body { background:transparent; }
+.scope-label { background:var(--paper); }

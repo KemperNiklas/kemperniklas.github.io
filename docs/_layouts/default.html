@@ -6,9 +6,29 @@
     <meta name="color-scheme" content="light">
     <meta name="theme-color" content="#f7f6f2">
     <meta name="description" content="{{ page.description | default: site.description | escape }}">
+    {% if page.noindex %}
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
+    {% endif %}
     <title>{% if page.title %}{{ page.title }} · {% endif %}{{ site.title }}</title>
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="{{ '/assets/css/main.css' | relative_url }}">
+    {% for stylesheet in page.stylesheets %}
+    <link rel="stylesheet" href="{{ stylesheet | relative_url }}">
+    {% endfor %}
+    {% if page.layout == 'research-post' %}
+    <link rel="stylesheet" href="{{ '/assets/css/research-post.css' | relative_url }}">
+    <link rel="canonical" href="{{ page.canonical_url | default: page.url | absolute_url }}">
+    <meta name="author" content="{{ page.author | escape }}">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="{{ page.title | escape }}">
+    <meta property="og:description" content="{{ page.description | escape }}">
+    <meta property="og:url" content="{{ page.url | absolute_url }}">
+    <meta name="twitter:card" content="summary">
+    {% endif %}
+    {% for script in page.scripts %}
+    <script src="{{ script | relative_url }}" defer></script>
+    {% endfor %}
   </head>
   <body>
     <a class="skip-link" href="#content">Skip to content</a>
@@ -18,7 +38,7 @@
         <nav class="site-nav" aria-label="Primary navigation">
           <a {% if page.url == '/' %}aria-current="page"{% endif %} href="{{ '/' | relative_url }}">About</a>
           <a {% if page.url == '/publications/' %}aria-current="page"{% endif %} href="{{ '/publications/' | relative_url }}">Publications</a>
-          <a {% if page.url == '/blog/' %}aria-current="page"{% endif %} href="{{ '/blog/' | relative_url }}">Blog</a>
+          <a {% if page.url contains '/blog/' or page.layout == 'research-post' %}aria-current="page"{% endif %} href="{{ '/blog/' | relative_url }}">Blog</a>
         </nav>
       </div>
     </header>

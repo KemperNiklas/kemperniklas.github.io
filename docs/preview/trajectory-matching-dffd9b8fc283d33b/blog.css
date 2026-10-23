@@ -3,6 +3,9 @@
 .article-header { max-width:var(--reading);padding:74px 0 0;margin:auto; }
 .article-header h1 { font:500 clamp(36px,6vw,55px)/1.1 Georgia,"Times New Roman",serif;letter-spacing:-.035em;margin:14px 0 13px; }
 .article-header .subtitle { font-size:20px;line-height:1.5;color:var(--muted);margin:0; }
+.article-byline { margin:14px 0 0; font-size:13px; color:var(--muted); }
+.article-byline a,.article-header .eyebrow a { color:inherit; text-decoration:none; }
+.article-byline a:hover,.article-header .eyebrow a:hover { text-decoration:underline; }
 .article-links { display:flex;gap:24px;font-size:13px;margin:24px 0; }
 .article-links a,.article-nav a { color:var(--muted);text-decoration:none; }
 .article-links a:hover,.article-nav a:hover { color:var(--blue-ink); }

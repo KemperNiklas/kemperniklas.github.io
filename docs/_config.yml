@@ -3,6 +3,7 @@ description: Personal academic website of Niklas Kemper, a researcher at the Dat
 url: "https://niklaskemper.com"
 baseurl: ""
 lang: en
+timezone: Europe/Berlin
 
 markdown: kramdown
 permalink: /blog/:year/:month/:day/:title/
