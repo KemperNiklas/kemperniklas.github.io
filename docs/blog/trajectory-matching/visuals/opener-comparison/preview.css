@@ -22,7 +22,7 @@ figure { margin:0; }
 .controls { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:12px 24px; margin-top:18px; }
 .playback { display:flex; align-items:center; gap:12px; }
 button { font:inherit; font-size:11px; border:0; padding:3px 0; background:transparent; color:var(--muted); cursor:pointer; }
-#play { min-width:30px; }
+#play { min-width:52px; min-height:36px; padding:8px; }
 #restart { font-size:17px; line-height:1; }
 input[type=range] { width:110px; height:2px; accent-color:var(--blue); cursor:pointer; }
 button:focus-visible,input:focus-visible,select:focus-visible { outline:2px solid var(--blue); outline-offset:4px; }

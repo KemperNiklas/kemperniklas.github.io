@@ -5,6 +5,7 @@
   const ink = '#202630', highlight = '#b7d5ec';
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let progress = reduced ? 1 : 0, playing = !reduced, last = null, lastFrame = '', visible = true, example = 0;
+  let animationFrame = null;
   let domain = 'molecules';
   const line = (a,b,color=ink,width=2.3,extra='') => `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${color}" stroke-width="${width}" stroke-linecap="round" ${extra}/>`;
   const dot = (p,r=5.5,color=ink) => `<circle cx="${p[0]}" cy="${p[1]}" r="${r}" fill="${color}"/>`;
@@ -169,24 +170,34 @@
     }
     $('progress').value=String(Math.round(progress*1000));
     $('progress').setAttribute('aria-valuetext',`${Math.round(fraction*100)}% of sequence`);
-    $('play').textContent=playing?'Pause':'Play';
+    // Keep the button's DOM stable between clicks, including during playback.
+    const label=playing?'Pause':'Play';
+    if($('play').textContent!==label)$('play').textContent=label;
   }
   function nextExample(){example=(example+1)%trees.length;progress=0;last=null;}
+  function syncPlayback(){
+    if(animationFrame!==null)cancelAnimationFrame(animationFrame);
+    animationFrame=null;last=null;
+    if(playing&&visible&&!document.hidden)animationFrame=requestAnimationFrame(tick);
+  }
   $('domain').onchange=e=>{
     domain=e.target.value;progress=0;last=null;
     draw(true);
   };
-  $('play').onclick=()=>{if(progress>=1)nextExample();playing=!playing;last=null;draw();};
-  $('restart').onclick=()=>{nextExample();playing=!reduced;draw(true);};
-  $('progress').oninput=e=>{progress=Number(e.target.value)/1000;playing=false;draw();};
-  new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;last=null;}).observe($('comparison'));
+  $('play').onclick=()=>{if(!playing&&progress>=1)nextExample();playing=!playing;syncPlayback();draw();};
+  $('restart').onclick=()=>{nextExample();playing=!reduced;syncPlayback();draw(true);};
+  $('progress').oninput=e=>{progress=Number(e.target.value)/1000;playing=false;syncPlayback();draw();};
+  new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;syncPlayback();}).observe($('comparison'));
+  document.addEventListener('visibilitychange',syncPlayback);
   function tick(now){
-    if(last!==null&&playing&&visible&&!document.hidden){
+    animationFrame=null;
+    if(!playing||!visible||document.hidden)return;
+    if(last!==null){
       progress+=Math.min(100,now-last)/22000;
       if(progress>=1)nextExample();
       draw();
     }
-    last=now;requestAnimationFrame(tick);
+    last=now;animationFrame=requestAnimationFrame(tick);
   }
-  draw(true);requestAnimationFrame(tick);
+  draw(true);syncPlayback();
 })();
