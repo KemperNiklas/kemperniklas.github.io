@@ -1,0 +1,20 @@
+/* Reuse the teaching figures' typography, palette, controls, math and timeline. */
+.factorized-preview main { max-width:1000px; padding-top:32px; }
+#factorized-flow .endpoint-layout { display:grid;grid-template-columns:1fr 24px 1.4fr 24px 1fr;align-items:center;gap:12px;margin:26px 0 8px; }
+#factorized-flow .endpoint-layout figure { margin:0;min-width:0; }
+#factorized-flow .endpoint-layout figcaption { color:var(--ink);font-size:13px;margin:0 0 12px;text-align:center; }
+#factorized-flow .endpoint-layout svg { overflow:visible; }
+#factorized-flow .endpoint-arrow { color:var(--blue-ink);text-align:center;font-size:25px;font-weight:300; }
+#factorized-flow .controls { justify-content:center;margin:8px 0 16px; }
+#factorized-flow .figure-caption { color:var(--muted);font-size:12px;line-height:1.65;margin:18px auto 0;max-width:690px; }
+@media(max-width:600px) {
+  .factorized-preview main { padding:20px 14px 0; }
+  #factorized-flow .endpoint-layout { grid-template-columns:1fr 14px 1.5fr 14px 1fr;gap:3px; }
+  #factorized-flow .endpoint-layout figcaption { font-size:11px; }
+  #factorized-flow .endpoint-arrow { font-size:18px; }
+}
+
+
+#factorized-timeline { height:86px;max-width:740px;margin:12px auto 0;touch-action:none;cursor:ew-resize;user-select:none; }
+
+#factorized-timeline:focus-visible { outline:2px solid var(--blue-ink);outline-offset:3px; }
