@@ -36,8 +36,16 @@ function drawGraph(svg,present) {
  for(const [x,y] of tree)ink+=circle(x,y,7.3);
  svg.innerHTML=ink;
 }
+function timelineGeometry() {
+ const rect=$('factorized-timeline').getBoundingClientRect(),w=Math.max(280,rect.width);
+ const center=id=>{
+  const graph=$(id).getBoundingClientRect();
+  return (graph.left+graph.width/2-rect.left)*w/rect.width;
+ };
+ return {rect,w,left:center('factorized-source'),right:center('factorized-target')};
+}
 function drawTimeline(k) {
- const svg=$('factorized-timeline'),w=Math.max(280,svg.getBoundingClientRect().width),left=32,right=w-32,y=30;
+ const svg=$('factorized-timeline'),{w,left,right}=timelineGeometry(),y=30;
  svg.setAttribute('viewBox',`0 0 ${w} 86`);const x=t=>left+t*(right-left);
  let s=`<rect width="${w}" height="86" fill="transparent"/>`;
  s+=line(left,y,right,y,GHOST,2)+line(left,y,x(flowTime),y,BLUEINK,2);
@@ -59,8 +67,8 @@ function draw() {
 $('factorized-resample').onclick=()=>{eventTimes=edits.map(()=>Math.max(Number.EPSILON,Math.random()));draw();};
 const timeline=$('factorized-timeline');
 function scrub(event){
- const rect=timeline.getBoundingClientRect(),w=Math.max(280,rect.width);
- flowTime=Math.max(0,Math.min(1,((event.clientX-rect.left)/rect.width*w-32)/(w-64)));draw();
+ const {rect,w,left,right}=timelineGeometry();
+ flowTime=Math.max(0,Math.min(1,((event.clientX-rect.left)/rect.width*w-left)/(right-left)));draw();
 }
 timeline.onpointerdown=event=>{
  if(event.button!==0&&event.button!==undefined)return;
