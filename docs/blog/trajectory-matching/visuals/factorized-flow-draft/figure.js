@@ -28,12 +28,12 @@ function drawGraph(svg,present) {
  // Show absent adjacency entries faintly, as in the opening figure.
  for(let a=0;a<tree.length;a++)for(let b=a+1;b<tree.length;b++){
   const index=edges.findIndex(([u,v])=>u===a&&v===b);
-  if(index<0||!present[index])ink+=line(...tree[a].slice(0,2),...tree[b].slice(0,2),'#eceef0',1);
+  if(index<0||!present[index])ink+=line(...tree[a].slice(0,2),...tree[b].slice(0,2),'#b8c0ca',1.3);
  }
  edges.forEach(([a,b],i)=>{
-  if(present[i])ink+=line(...tree[a].slice(0,2),...tree[b].slice(0,2));
+  if(present[i])ink+=line(...tree[a].slice(0,2),...tree[b].slice(0,2),INK,3.3);
  });
- for(const [x,y] of tree)ink+=circle(x,y,5.4);
+ for(const [x,y] of tree)ink+=circle(x,y,7.3);
  svg.innerHTML=ink;
 }
 function drawTimeline(k) {
